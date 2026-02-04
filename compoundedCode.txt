@@ -1,0 +1,558 @@
+./src/components/App/App.tsx
+import { FC } from 'react';
+import { DragAndDrop } from 'components/common/DragAndDrop';
+
+export const App: FC = () => {
+  return (
+    <div>
+      <DragAndDrop />
+    </div>
+  );
+};
+
+./src/components/common/DragAndDrop.tsx
+import React from 'react';
+import { useFileController } from './hooks/useFileController';
+import { useMouseEvents } from './hooks/useMouseEvents';
+
+export const DragAndDrop: React.FC = () => {
+  const {
+    files,
+    setFiles,
+    isDragVisible,
+    getRootProps,
+    getInputProps,
+    backgroundImage,
+    isBackgroundMode,
+    deleteImage,
+  } = useFileController();
+
+  const { onMouseDown, setRef } = useMouseEvents({ files, setFiles });
+
+  return (
+    <div>
+      <div
+        {...getRootProps({
+          style: {
+            position: 'absolute',
+            height: '100vh',
+            width: '100vw',
+            zIndex: '9999',
+            visibility: isDragVisible ? 'visible' : 'hidden',
+          },
+        })}
+      >
+        <input {...getInputProps()} />
+      </div>
+      <div style={{ position: 'relative', height: '100vh' }}>
+        {backgroundImage && (
+          <img
+            src={backgroundImage}
+            alt="Background"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: '100%',
+              zIndex: -1, // Минимальный z-index
+            }}
+          />
+        )}
+        {files.map((file) => (
+          <div
+            key={file.id}
+            ref={(element) => setRef(element, file.id)}
+            role="button"
+            tabIndex={0}
+            onMouseDown={(e) => onMouseDown(e, file.id)}
+            onContextMenu={(e) => deleteImage(e, file.id)}
+            style={{
+              position: 'absolute',
+              top: file.position.y,
+              left: file.position.x,
+              cursor: 'grab',
+            }}
+            aria-label={`Draggable image: ${file.name}`}
+          >
+            <img
+              src={file.preview}
+              alt={file.name}
+              style={{
+                width: file.dimensions.width,
+                height: file.dimensions.height,
+              }}
+            />
+          </div>
+        ))}
+      </div>
+      {isBackgroundMode && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            border: '2px dashed #007bff',
+            zIndex: 9998,
+            pointerEvents: 'none',
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+./src/components/common/helpers.ts
+import { Dispatch, SetStateAction } from 'react';
+import { DropzoneFile } from './types';
+
+export const adjustImageSizeToViewport = (width: number, height: number) => {
+  const maxWidth = window.innerWidth * 0.8;
+  const maxHeight = window.innerHeight * 0.8;
+  const ratio = Math.min(maxWidth / width, maxHeight / height);
+  return ratio < 1 ? { width: width * ratio, height: height * ratio } : { width, height };
+};
+
+export const adjustRenderedImageDimensions = ({
+  isInitialAdjustment,
+  setFunc,
+}: {
+  isInitialAdjustment?: boolean;
+  setFunc: Dispatch<SetStateAction<DropzoneFile[]>>;
+}) => {
+  setFunc((prevFiles) =>
+    prevFiles.map((file) => {
+      let newDimensions;
+      let newPosition;
+      const imgElement = document.querySelector(`img[src="${file.preview}"]`) as HTMLImageElement;
+      const { offsetWidth, offsetHeight } = imgElement;
+
+      if (!imgElement) {
+        return file;
+      }
+
+      if (isInitialAdjustment) {
+        newDimensions = { width: offsetWidth, height: offsetHeight };
+      }
+
+      if (!isInitialAdjustment) {
+        const newX =
+          file.position.x + offsetWidth >= window.innerWidth
+            ? window.innerWidth - file.dimensions.width
+            : file.position.x;
+
+        const newY =
+          file.position.y + offsetHeight >= window.innerHeight
+            ? window.innerHeight - offsetHeight
+            : file.position.y;
+
+        newPosition = { x: newX, y: newY };
+      }
+
+      return {
+        ...file,
+        ...(newDimensions && { dimensions: newDimensions }),
+        ...(newPosition && { position: newPosition }),
+      };
+    }),
+  );
+};
+
+export const updateImageDimensions = ({
+  setFunc,
+  id,
+  dimensions,
+}: {
+  setFunc: Dispatch<SetStateAction<DropzoneFile[]>>;
+  id: string;
+  dimensions: DropzoneFile['dimensions'];
+}) => {
+  setFunc((prevFiles) =>
+    prevFiles.map((file) => {
+      if (file.id === id) {
+        return {
+          ...file,
+          dimensions,
+        };
+      }
+      return file;
+    }),
+  );
+
+  adjustRenderedImageDimensions({ setFunc });
+};
+
+./src/components/common/hooks/useFileController.ts
+import { useEffect, useState, useCallback, Dispatch, SetStateAction } from 'react';
+import { DropzoneState, useDropzone } from 'react-dropzone';
+import { DropzoneFile } from '../types';
+import { adjustImageSizeToViewport, adjustRenderedImageDimensions } from '../helpers';
+import { useKeyPress } from './useKeyPress';
+
+type MouseEventFunction = (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
+
+type FileControllerData = {
+  files: DropzoneFile[];
+  setFiles: Dispatch<SetStateAction<DropzoneFile[]>>;
+  isDragVisible: boolean;
+  getRootProps: DropzoneState['getRootProps'];
+  getInputProps: DropzoneState['getInputProps'];
+  backgroundImage: string | null;
+  isBackgroundMode: boolean;
+  deleteImage: MouseEventFunction;
+};
+
+export const useFileController = (): FileControllerData => {
+  const [files, setFiles] = useState<DropzoneFile[]>([]);
+  const [isDragVisible, setIsDragVisible] = useState(false);
+  const [backgroundImage, setBackgroundImage] = useState<string | null>(null); // Состояние для фонового изображения
+
+  const { isBackgroundMode, setIsBackgroundMode } = useKeyPress();
+
+  // Обработчик добавления фонового изображения
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (isBackgroundMode) {
+        // Если режим добавления фона активен
+        const file = acceptedFiles[0];
+        if (file) {
+          const preview = URL.createObjectURL(file);
+          setBackgroundImage(preview); // Устанавливаем фоновое изображение
+          setIsBackgroundMode(false); // Отключаем режим добавления фона
+        }
+      } else {
+        // Обычный режим добавления изображений
+        const filePreviews = acceptedFiles.map((file) => {
+          return new Promise<DropzoneFile>((resolve, reject) => {
+            const img = new Image();
+            const preview = URL.createObjectURL(file);
+
+            img.onload = () => {
+              const originalWidth = img.naturalWidth;
+              const originalHeight = img.naturalHeight;
+              const adjustedImage = adjustImageSizeToViewport(originalWidth, originalHeight);
+
+              resolve({
+                id: `${file.name}-${Date.now()}`,
+                preview,
+                name: file.name,
+                position: {
+                  x: window.innerWidth / 2 - adjustedImage.width / 2,
+                  y: window.innerHeight / 2 - adjustedImage.height / 2,
+                },
+                dimensions: adjustedImage,
+              });
+            };
+
+            img.onerror = (error) => {
+              // eslint-disable-next-line no-console
+              console.error(`Error loading image: ${file.name}`, error);
+              reject(new Error(`Failed to load image preview for: ${file.name}`));
+            };
+
+            img.src = preview;
+          });
+        });
+
+        Promise.all(filePreviews).then((newFiles) => {
+          setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+        });
+      }
+    },
+    [isBackgroundMode, setIsBackgroundMode],
+  );
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop,
+    accept: { 'image/*': [] },
+  });
+
+  const deleteImage = useCallback((e: React.MouseEvent<HTMLDivElement>, id: string) => {
+    e.preventDefault();
+    setFiles((prevFiles) => prevFiles.filter((file) => file.id !== id));
+  }, []);
+
+  const onDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    setIsDragVisible(true);
+  };
+
+  const onDragEnd = () => {
+    setIsDragVisible(false);
+  };
+
+  useEffect(() => {
+    window.addEventListener('resize', () => adjustRenderedImageDimensions({ setFunc: setFiles }));
+    document.addEventListener('dragover', onDragOver);
+    document.addEventListener('drop', onDragEnd);
+
+    return () => {
+      window.removeEventListener('resize', () =>
+        adjustRenderedImageDimensions({ setFunc: setFiles }),
+      );
+      document.removeEventListener('dragover', onDragOver);
+      document.removeEventListener('drop', onDragEnd);
+    };
+  }, []);
+
+  return {
+    files,
+    setFiles,
+    isDragVisible,
+    getRootProps,
+    getInputProps,
+    backgroundImage,
+    isBackgroundMode,
+    deleteImage,
+  };
+};
+
+./src/components/common/hooks/useKeyPress.ts
+import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+
+export const useKeyPress = (): {
+  isBackgroundMode: boolean;
+  setIsBackgroundMode: Dispatch<SetStateAction<boolean>>;
+} => {
+  const [isBackgroundMode, setIsBackgroundMode] = useState(false); // Режим добавления фона
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'b') {
+        setIsBackgroundMode((p) => !p);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  return {
+    isBackgroundMode,
+    setIsBackgroundMode,
+  };
+};
+
+./src/components/common/hooks/useMouseEvents.ts
+import { useCallback, useEffect, useRef } from 'react';
+import { useRefs } from 'hooks/useRefs';
+import { UseMouseEvents } from '../types';
+import { updateImageDimensions } from '../helpers';
+
+const ZOOM_DELTA = 20;
+
+export const useMouseEvents: UseMouseEvents = ({ files, setFiles }) => {
+  const movingRef = useRef<{
+    id: string;
+    isMoving: boolean;
+    offsetX: number;
+    offsetY: number;
+  } | null>(null);
+
+  const wheelHandlerRefs = useRef(new Map());
+
+  const { refsByKey, setRef } = useRefs();
+
+  const onMouseMove = useCallback(
+    (e: MouseEvent) => {
+      if (!movingRef.current?.isMoving) return;
+
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+
+      setFiles((prevFiles) =>
+        prevFiles.map((file) => {
+          if (file.id === movingRef.current?.id) {
+            const newX = Math.min(
+              Math.max(e.clientX - movingRef.current.offsetX, 0),
+              viewportWidth - file.dimensions.width,
+            );
+            const newY = Math.min(
+              Math.max(e.clientY - movingRef.current.offsetY, 0),
+              viewportHeight - file.dimensions.height,
+            );
+
+            return {
+              ...file,
+              position: { x: newX, y: newY },
+            };
+          }
+          return file;
+        }),
+      );
+    },
+    [setFiles],
+  );
+
+  const onMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, id: string) => {
+      e.stopPropagation();
+      e.preventDefault();
+
+      const img = files.find((file) => file.id === id);
+      if (!img) return;
+
+      const offsetX = e.clientX - img.position.x;
+      const offsetY = e.clientY - img.position.y;
+
+      movingRef.current = { id, isMoving: true, offsetX, offsetY };
+      document.addEventListener('mousemove', onMouseMove);
+    },
+    [files, onMouseMove],
+  );
+
+  const onMouseUp = () => {
+    document.removeEventListener('mousemove', onMouseMove);
+    movingRef.current = null;
+  };
+
+  const handleZoom = useCallback(
+    (e: WheelEvent, id: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const delta = e.deltaY > 0 ? -ZOOM_DELTA : ZOOM_DELTA;
+      const target = files.find((f) => f.id === id);
+
+      if (target) {
+        const newWidth = target.dimensions.width + delta;
+        const newHeight = newWidth * (target.dimensions.height / target.dimensions.width);
+
+        if (newWidth > 20 && newWidth <= window.innerWidth && newHeight <= window.innerHeight) {
+          updateImageDimensions({
+            id,
+            dimensions: { height: newHeight, width: newWidth },
+            setFunc: setFiles,
+          });
+        }
+      }
+    },
+    [files, setFiles],
+  );
+
+  useEffect(() => {
+    const currentHandlerRefs = wheelHandlerRefs.current;
+
+    Object.entries(refsByKey).forEach(([id, imgContainerRef]) => {
+      if (imgContainerRef) {
+        const wrappedHandler = (e: WheelEvent) => handleZoom(e, id);
+        currentHandlerRefs.set(id, wrappedHandler);
+
+        imgContainerRef.addEventListener('wheel', wrappedHandler, { passive: false });
+      }
+    });
+
+    return () => {
+      Object.entries(refsByKey).forEach(([id, imgContainerRef]) => {
+        if (imgContainerRef) {
+          const wrappedHandler = currentHandlerRefs.get(id);
+          if (wrappedHandler) {
+            imgContainerRef.removeEventListener('wheel', wrappedHandler);
+            currentHandlerRefs.delete(id);
+          }
+        }
+      });
+    };
+  }, [files.length, refsByKey, handleZoom]);
+
+  useEffect(() => {
+    document.addEventListener('mouseup', onMouseUp);
+
+    return () => {
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return {
+    onMouseMove,
+    onMouseDown,
+    onMouseUp,
+    handleZoom,
+    setRef,
+  };
+};
+
+./src/components/common/types.ts
+import { Dispatch, SetStateAction } from 'react';
+import { useRefsData } from 'hooks/useRefs';
+
+export type DropzoneFile = {
+  id: string;
+  preview: string;
+  name: string;
+  position: { x: number; y: number };
+  dimensions: { width: number; height: number };
+};
+
+type UseMouseEventsParams = {
+  files: DropzoneFile[];
+  setFiles: Dispatch<SetStateAction<DropzoneFile[]>>;
+};
+
+export type UseMouseEventsData = {
+  onMouseMove(e: MouseEvent): void;
+  onMouseDown(e: React.MouseEvent<HTMLDivElement>, id: string): void;
+  handleZoom(e: WheelEvent, id: string): void;
+  onMouseUp(): void;
+  setRef: useRefsData['setRef'];
+};
+
+export type UseMouseEvents = (params: UseMouseEventsParams) => UseMouseEventsData;
+
+./src/hooks/useRefs.ts
+import { useCallback, useRef } from 'react';
+
+export type useRefsData = {
+  refsByKey: Record<string, HTMLElement | null>;
+  setRef(element: HTMLElement | null, key: string): void;
+};
+
+export const useRefs = () => {
+  const refsByKey = useRef<Record<string, HTMLElement | null>>({});
+
+  const setRef = useCallback((element: HTMLElement | null, key: string) => {
+    refsByKey.current[key] = element;
+  }, []);
+
+  return { refsByKey: refsByKey.current, setRef };
+};
+
+./src/main.tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { App } from './components/App/App.tsx';
+import './style/index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+);
+
+./src/style/index.css
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  font-family: 'SegoeUI', 'Roboto Condensed', sans-serif;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+./src/types/modules.d.ts
+declare module '*.mdx';
+
+./src/types/vite-env.d.ts
+/// <reference types="vite/client" />
+

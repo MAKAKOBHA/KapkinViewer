@@ -1,0 +1,22 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+* {
+  margin: 0;
+  font-family: 'Lombardina Two', 'SegoeUI', 'Roboto Condensed', sans-serif;
+}
+
+@font-face {
+  font-family: 'Lombardina Two';
+  src: url('/fonts/Lombardina.ttf');
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
