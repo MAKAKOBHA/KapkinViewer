@@ -5,6 +5,8 @@ import EidosImg from 'assets/eidos.gif';
 import { useFileController } from './hooks/useFileController';
 import { useMouseEvents } from './hooks/useMouseEvents';
 import './DragAndDrop.scss';
+import { BrushModal } from '../BrushModal';
+import { Canvas } from '../Canvas';
 
 export const DragAndDrop: React.FC = () => {
   const {
@@ -20,12 +22,13 @@ export const DragAndDrop: React.FC = () => {
     duplicateImage,
     isGridEnabled,
     isEidosEnabled,
+    isBrushModalOpen,
   } = useFileController();
 
   const { onMouseDown, setRef } = useMouseEvents({ files, setFiles, setActiveFileId });
 
   return (
-    <div>
+    <div className="drag-and-drop-root">
       <div
         {...getRootProps({
           style: {
@@ -39,6 +42,8 @@ export const DragAndDrop: React.FC = () => {
       >
         <input {...getInputProps()} />
       </div>
+      {isBrushModalOpen && <BrushModal />}
+      <Canvas />
       <div style={{ position: 'relative', height: '100vh' }}>
         {backgroundImage && (
           <img src={backgroundImage} alt="Background" className="background-image" />

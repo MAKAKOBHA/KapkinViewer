@@ -1,0 +1,102 @@
+.brush-modal {
+  position: absolute;
+  width: auto;
+  height: auto;
+  padding: 8px 12px;
+  background: rgba(20, 20, 20, 0.85);
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: #ffffff;
+  z-index: 60;
+  user-select: none;
+}
+
+.brush-modal__handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: grab;
+}
+
+.brush-modal__content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+}
+
+.brush-modal__tool {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.brush-modal__tool.is-active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+.brush-modal__slider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.brush-modal__slider input {
+  width: 120px;
+}
+
+.brush-modal__value {
+  font-size: 12px;
+  min-width: 22px;
+  text-align: right;
+}
+
+.brush-modal__colors {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+}
+
+.brush-modal__color {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  padding: 0;
+}
+
+.brush-modal__color.is-active {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+.brush-modal__color--green {
+  background: #22c55e;
+}
+
+.brush-modal__color--red {
+  background: #ef4444;
+}
+
+.brush-modal__color--blue {
+  background: #3b82f6;
+}

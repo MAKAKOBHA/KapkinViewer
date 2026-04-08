@@ -13,16 +13,17 @@ export const BackgroundBorder = styled.div<{ $isBackground: boolean }>`
 
 export const Grid = styled.img`
   position: absolute;
-  z-index: 2;
+  z-index: 20;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
+  pointer-events: none;
 `;
 
 export const Eidos = styled.img<{ $isVisible: boolean }>`
   position: absolute;
-  z-index: 4;
+  z-index: 40;
   top: 0;
   left: 0;
   width: 100%;
@@ -41,7 +42,7 @@ export const ImageContainer = styled.div.attrs<{
   style: {
     top: `${props.$top}px`,
     left: `${props.$left}px`,
-    zIndex: props.$isNormalImage ? 3 : 1,
+    zIndex: props.$isNormalImage ? 40 : 10,
     opacity: props.$health === 0 ? '40%' : 1,
   },
 }))`
@@ -57,7 +58,7 @@ export const DicesContainer = styled.div`
   background-color: #ff2d2d59;
   top: 0;
   left: 0;
-  z-index: 5;
+  z-index: 50;
   border-end-end-radius: 20px;
 `;
 

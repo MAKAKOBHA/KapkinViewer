@@ -5,25 +5,32 @@ export const useKeyPress = (): {
   imageType: ImageType;
   isGridEnabled: boolean;
   isEidosEnabled: boolean;
+  isBrushModalOpen: boolean;
   setImageType: Dispatch<SetStateAction<ImageType>>;
 } => {
   const [imageType, setImageType] = useState<ImageType>('normal');
   const [isGridEnabled, setIsGridEnabled] = useState(false);
   const [isEidosEnabled, setIsEidosEnabled] = useState(false);
+  const [isBrushModalOpen, setIsBrushModalOpen] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'b' || e.key === 'и') {
+      const key = e.key.toLowerCase();
+
+      if (key === 'b' || key === 'и') {
         setImageType((p) => (p === 'background' ? 'normal' : 'background'));
       }
-      if (e.key === 'l' || e.key === 'д') {
+      if (key === 'l' || key === 'д') {
         setImageType((p) => (p === 'battle' ? 'normal' : 'battle'));
       }
-      if (e.key === 'm' || e.key === 'ь') {
+      if (key === 'm' || key === 'ь') {
         setIsGridEnabled((p) => !p);
       }
-      if (e.key === "'" || e.key === 'э') {
+      if (key === "'" || key === 'э') {
         setIsEidosEnabled((p) => !p);
+      }
+      if (key === 'd' || key === 'в') {
+        setIsBrushModalOpen((p) => !p);
       }
     };
 
@@ -35,6 +42,7 @@ export const useKeyPress = (): {
     imageType,
     isGridEnabled,
     isEidosEnabled,
+    isBrushModalOpen,
     setImageType,
   };
 };
