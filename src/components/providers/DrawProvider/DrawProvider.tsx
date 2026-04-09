@@ -5,9 +5,11 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { BrushColor, BrushTool, DrawContext as DrawContextType } from './types';
+import { clearCanvas } from 'components/Canvas';
 
 const DrawContext = createContext<DrawContextType | null>(null);
 
@@ -22,6 +24,9 @@ export const useDrawContext = () => {
 };
 
 export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isDrawingRef = useRef(false);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const [activeTool, setActiveTool] = useState<BrushTool>(null);
   const [brushSize, setBrushSize] = useState(20);
   const [brushOpacity, setBrushOpacity] = useState(100);
@@ -31,8 +36,16 @@ export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
     setActiveTool((current) => (current === tool ? null : tool));
   }, []);
 
+  const handleClearCanvas = useCallback(
+    () => clearCanvas({ canvasRef, isDrawingRef, lastPointRef }),
+    [],
+  );
+
   const contextValue = useMemo(
     () => ({
+      canvasRef,
+      isDrawingRef,
+      lastPointRef,
       activeTool,
       setActiveTool,
       brushSize,
@@ -41,6 +54,7 @@ export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
       setBrushOpacity,
       brushColor,
       setBrushColor,
+      handleClearCanvas,
       handleToolToggle,
     }),
     [activeTool, brushSize, brushOpacity, brushColor, handleToolToggle],

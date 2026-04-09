@@ -10,6 +10,7 @@ export const BrushModal: React.FC = () => {
   const {
     activeTool,
     handleToolToggle,
+    handleClearCanvas,
     brushColor,
     setBrushColor,
     brushSize,
@@ -111,6 +112,14 @@ export const BrushModal: React.FC = () => {
               aria-label="Blue color"
             />
           </div>
+          <button
+            type="button"
+            className={`brush-modal__tool`}
+            onClick={handleClearCanvas}
+            aria-label="Clear canvas"
+          >
+            <Icon icon="trash" />
+          </button>
         </div>
       </div>
     </Draggable>

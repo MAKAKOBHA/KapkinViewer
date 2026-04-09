@@ -1,12 +1,11 @@
 import { useDrawContext } from 'components/providers';
-import { FC, useCallback, useEffect, useRef } from 'react';
+import { FC, useCallback, useEffect } from 'react';
 import './Canvas.scss';
 
 export const Canvas: FC = () => {
-  const { activeTool, brushColor, brushSize, brushOpacity } = useDrawContext();
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const isDrawingRef = useRef(false);
-  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const { activeTool, brushColor, brushSize, brushOpacity, canvasRef, isDrawingRef, lastPointRef } =
+    useDrawContext();
+
   const isCanvasEnabled = Boolean(activeTool);
 
   const getCanvasPoint = useCallback((event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
