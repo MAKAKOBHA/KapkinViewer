@@ -20,7 +20,6 @@ type FileControllerData = {
   duplicateImage: MouseEventFunction;
   isGridEnabled: boolean;
   isEidosEnabled: boolean;
-  isBrushModalOpen: boolean;
 };
 
 const getNewFilesWithHealth = (
@@ -54,7 +53,7 @@ export const useFileController = (): FileControllerData => {
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [activeFileId, setActiveFileId] = useState<string>('');
 
-  const { imageType, setImageType, isGridEnabled, isEidosEnabled, isBrushModalOpen } = useKeyPress();
+  const { imageType, setImageType, isGridEnabled, isEidosEnabled } = useKeyPress();
 
   // Обработчик добавления фонового изображения
   const onDrop = useCallback(
@@ -201,6 +200,5 @@ export const useFileController = (): FileControllerData => {
     duplicateImage,
     isGridEnabled,
     isEidosEnabled,
-    isBrushModalOpen,
   };
 };

@@ -31,6 +31,7 @@ export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
   const [brushSize, setBrushSize] = useState(20);
   const [brushOpacity, setBrushOpacity] = useState(100);
   const [brushColor, setBrushColor] = useState<BrushColor>('green');
+  const [isBrushModalOpen, setIsBrushModalOpen] = useState(false);
 
   const handleToolToggle = useCallback((tool: BrushTool) => {
     setActiveTool((current) => (current === tool ? null : tool));
@@ -54,10 +55,20 @@ export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
       setBrushOpacity,
       brushColor,
       setBrushColor,
+      isBrushModalOpen,
+      setIsBrushModalOpen,
       handleClearCanvas,
       handleToolToggle,
     }),
-    [activeTool, brushSize, brushOpacity, brushColor, handleToolToggle],
+    [
+      activeTool,
+      brushSize,
+      brushOpacity,
+      brushColor,
+      handleToolToggle,
+      handleClearCanvas,
+      isBrushModalOpen,
+    ],
   );
 
   return <DrawContext.Provider value={contextValue}>{children}</DrawContext.Provider>;

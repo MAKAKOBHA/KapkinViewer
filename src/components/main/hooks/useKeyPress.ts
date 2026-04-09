@@ -1,17 +1,17 @@
 import { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import { ImageType } from '../types';
+import { useDrawContext } from 'components/providers';
 
 export const useKeyPress = (): {
   imageType: ImageType;
   isGridEnabled: boolean;
   isEidosEnabled: boolean;
-  isBrushModalOpen: boolean;
   setImageType: Dispatch<SetStateAction<ImageType>>;
 } => {
   const [imageType, setImageType] = useState<ImageType>('normal');
   const [isGridEnabled, setIsGridEnabled] = useState(false);
   const [isEidosEnabled, setIsEidosEnabled] = useState(false);
-  const [isBrushModalOpen, setIsBrushModalOpen] = useState(false);
+  const { setIsBrushModalOpen } = useDrawContext();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -42,7 +42,6 @@ export const useKeyPress = (): {
     imageType,
     isGridEnabled,
     isEidosEnabled,
-    isBrushModalOpen,
     setImageType,
   };
 };

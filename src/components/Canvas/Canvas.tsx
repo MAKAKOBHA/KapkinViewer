@@ -3,10 +3,18 @@ import { FC, useCallback, useEffect } from 'react';
 import './Canvas.scss';
 
 export const Canvas: FC = () => {
-  const { activeTool, brushColor, brushSize, brushOpacity, canvasRef, isDrawingRef, lastPointRef } =
-    useDrawContext();
+  const {
+    isBrushModalOpen,
+    activeTool,
+    brushColor,
+    brushSize,
+    brushOpacity,
+    canvasRef,
+    isDrawingRef,
+    lastPointRef,
+  } = useDrawContext();
 
-  const isCanvasEnabled = Boolean(activeTool);
+  const isCanvasEnabled = Boolean(activeTool && isBrushModalOpen);
 
   const getCanvasPoint = useCallback((event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;

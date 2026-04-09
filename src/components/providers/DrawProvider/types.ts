@@ -13,6 +13,8 @@ export type DrawContext = {
   setBrushSize: Dispatch<SetStateAction<number>>;
   brushOpacity: number;
   setBrushOpacity: Dispatch<SetStateAction<number>>;
+  isBrushModalOpen: boolean;
+  setIsBrushModalOpen: Dispatch<SetStateAction<boolean>>;
   brushColor: BrushColor;
   setBrushColor: Dispatch<SetStateAction<BrushColor>>;
   handleToolToggle: (tool: BrushTool) => void;
