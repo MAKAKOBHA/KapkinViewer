@@ -7,7 +7,8 @@ import { useMouseEvents } from './hooks/useMouseEvents';
 import './DragAndDrop.scss';
 import { BrushModal } from '../BrushModal';
 import { Canvas } from '../Canvas';
-import { useDrawContext } from 'components/providers';
+import { useDrawContext, useLayerContext } from 'components/providers';
+import { LayerModal } from 'components/LayerModal';
 
 export const DragAndDrop: React.FC = () => {
   const {
@@ -25,6 +26,7 @@ export const DragAndDrop: React.FC = () => {
     isEidosEnabled,
   } = useFileController();
   const { isBrushModalOpen } = useDrawContext();
+  const { isLayerModalOpen } = useLayerContext();
 
   const { onMouseDown, setRef } = useMouseEvents({ files, setFiles, setActiveFileId });
 
@@ -44,6 +46,7 @@ export const DragAndDrop: React.FC = () => {
         <input {...getInputProps()} />
       </div>
       {isBrushModalOpen && <BrushModal />}
+      {isLayerModalOpen && <LayerModal />}
       <Canvas />
       <div style={{ position: 'relative', height: '100vh' }}>
         {background.image && (
