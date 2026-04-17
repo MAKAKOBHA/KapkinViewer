@@ -17,7 +17,7 @@ export const DragAndDrop: React.FC = () => {
     isDragVisible,
     getRootProps,
     getInputProps,
-    backgroundImage,
+    background,
     imageType,
     deleteImage,
     duplicateImage,
@@ -46,8 +46,8 @@ export const DragAndDrop: React.FC = () => {
       {isBrushModalOpen && <BrushModal />}
       <Canvas />
       <div style={{ position: 'relative', height: '100vh' }}>
-        {backgroundImage && (
-          <img src={backgroundImage} alt="Background" className="background-image" />
+        {background.image && (
+          <img src={background.image} alt="Background" className="background-image" />
         )}
         {files.map((file) => {
           const isNormalImage = file.imageType === 'normal';
@@ -77,6 +77,7 @@ export const DragAndDrop: React.FC = () => {
               <img
                 src={file.preview}
                 alt={file.name}
+                data-image-id={file.id}
                 style={{
                   width: isNormalImage ? file.dimensions.width : 'auto',
                   height: isNormalImage ? file.dimensions.height : 'auto',

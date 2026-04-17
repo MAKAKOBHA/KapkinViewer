@@ -13,6 +13,11 @@ export type DropzoneFile = {
   health?: number;
 };
 
+export type Background = {
+  id: string | null;
+  image: string | null;
+};
+
 type UseMouseEventsParams = {
   files: DropzoneFile[];
   setFiles: Dispatch<SetStateAction<DropzoneFile[]>>;

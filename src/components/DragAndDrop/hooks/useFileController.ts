@@ -1,9 +1,12 @@
 import { useEffect, useState, useCallback, Dispatch, SetStateAction } from 'react';
 import { DropzoneState, useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
-import { DropzoneFile, ImageType } from '../types';
+import { Background, DropzoneFile, ImageType } from '../types';
 import { adjustImageSizeToViewport, adjustRenderedImageDimensions } from '../helpers';
 import { useKeyPress } from './useKeyPress';
+import { deleteImageBlob, getImageBlob, putImageBlob } from '../storage';
+import { DEFAULT_BACKGROUND } from '../constants/background';
+import { useSyncFilesWithStorage } from './useSyncFilesWithStorage';
 
 type MouseEventFunction = (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
 
@@ -14,7 +17,7 @@ type FileControllerData = {
   isDragVisible: boolean;
   getRootProps: DropzoneState['getRootProps'];
   getInputProps: DropzoneState['getInputProps'];
-  backgroundImage: string | null;
+  background: Background;
   imageType: ImageType;
   deleteImage: MouseEventFunction;
   duplicateImage: MouseEventFunction;
@@ -50,9 +53,10 @@ const getNewFilesWithHealth = (
 export const useFileController = (): FileControllerData => {
   const [files, setFiles] = useState<DropzoneFile[]>([]);
   const [isDragVisible, setIsDragVisible] = useState(false);
-  const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [background, setBackground] = useState<Background>(DEFAULT_BACKGROUND);
   const [activeFileId, setActiveFileId] = useState<string>('');
 
+  useSyncFilesWithStorage({ files, setFiles, background, setBackground });
   const { imageType, setImageType, isGridEnabled, isEidosEnabled } = useKeyPress();
 
   // Обработчик добавления фонового изображения
@@ -63,7 +67,12 @@ export const useFileController = (): FileControllerData => {
         const file = acceptedFiles[0];
         if (file) {
           const preview = URL.createObjectURL(file);
-          setBackgroundImage(preview); // Устанавливаем фоновое изображение
+          const newId = `background-${uuidv4()}`;
+          void putImageBlob(newId, file);
+          if (background.id) {
+            void deleteImageBlob(background.id);
+          }
+          setBackground({ id: newId, image: preview }); // Устанавливаем фоновое изображение
           setImageType('normal');
         }
       } else {
@@ -71,7 +80,10 @@ export const useFileController = (): FileControllerData => {
         const filePreviews = acceptedFiles.map((file) => {
           return new Promise<DropzoneFile>((resolve, reject) => {
             const img = new Image();
+            const id = `${file.name}-${uuidv4()}`;
             const preview = URL.createObjectURL(file);
+
+            void putImageBlob(id, file);
 
             img.onload = () => {
               const isBattleImage = imageType === 'battle';
@@ -84,7 +96,7 @@ export const useFileController = (): FileControllerData => {
               );
 
               resolve({
-                id: `${file.name}-${uuidv4()}`,
+                id,
                 preview,
                 name: file.name,
                 position: {
@@ -116,7 +128,7 @@ export const useFileController = (): FileControllerData => {
         });
       }
     },
-    [imageType, setImageType],
+    [background.id, imageType, setImageType],
   );
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -126,7 +138,13 @@ export const useFileController = (): FileControllerData => {
 
   const deleteImage = useCallback((e: React.MouseEvent<HTMLDivElement>, id: string) => {
     e.preventDefault();
-    setFiles((prevFiles) => prevFiles.filter((file) => file.id !== id));
+    setFiles((prevFiles) => {
+      const fileToDelete = prevFiles.find((file) => file.id === id);
+      if (fileToDelete) {
+        void deleteImageBlob(fileToDelete.id);
+      }
+      return prevFiles.filter((file) => file.id !== id);
+    });
   }, []);
 
   const onDragOver = (e: DragEvent) => {
@@ -146,10 +164,16 @@ export const useFileController = (): FileControllerData => {
 
       if (!selectedFile) return;
 
-      setFiles((prevFiles) => [
-        ...prevFiles,
-        { ...selectedFile, id: `${selectedFile.id.slice(0, -36)}${uuidv4()}` },
-      ]);
+      const newId = `${selectedFile.name}-${uuidv4()}`;
+
+      setFiles((prevFiles) => [...prevFiles, { ...selectedFile, id: newId }]);
+
+      void (async () => {
+        const blob = await getImageBlob(selectedFile.id);
+        if (blob) {
+          await putImageBlob(newId, blob);
+        }
+      })();
     }
   };
 
@@ -194,7 +218,7 @@ export const useFileController = (): FileControllerData => {
     isDragVisible,
     getRootProps,
     getInputProps,
-    backgroundImage,
+    background,
     imageType,
     deleteImage,
     duplicateImage,

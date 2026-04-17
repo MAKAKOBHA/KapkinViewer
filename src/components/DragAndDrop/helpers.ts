@@ -25,7 +25,9 @@ export const adjustRenderedImageDimensions = ({
     prevFiles.map((file) => {
       let newDimensions;
       let newPosition;
-      const imgElement = document.querySelector(`img[src="${file.preview}"]`) as HTMLImageElement;
+      const imgElement = document.querySelector(
+        `img[data-image-id="${file.id}"]`,
+      ) as HTMLImageElement;
       const { offsetWidth, offsetHeight } = imgElement;
 
       if (!imgElement) {
