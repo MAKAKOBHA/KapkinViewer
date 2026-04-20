@@ -12,7 +12,7 @@ export const useKeyPress = (): {
   const [isGridEnabled, setIsGridEnabled] = useState(false);
   const [isEidosEnabled, setIsEidosEnabled] = useState(false);
   const { setIsBrushModalOpen } = useDrawContext();
-  const { isLayerModalOpen, setIsLayerModalOpen } = useLayerContext();
+  const { isInputActive, setIsLayerModalOpen } = useLayerContext();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -20,7 +20,7 @@ export const useKeyPress = (): {
       if (key === 'pagedown') {
         setIsLayerModalOpen((p) => !p);
       }
-      if (isLayerModalOpen) return;
+      if (isInputActive) return;
 
       if (key === 'b' || key === 'и') {
         setImageType((p) => (p === 'background' ? 'normal' : 'background'));
@@ -41,7 +41,7 @@ export const useKeyPress = (): {
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isLayerModalOpen]);
+  }, [isInputActive]);
 
   return {
     imageType,

@@ -1,11 +1,11 @@
-import { DropzoneFile } from "./types";
+import { DropzoneFile } from './types';
 
 export const IDB_DB_NAME = 'kapkin-viewer';
 export const IDB_DB_VERSION = 1;
 export const IDB_STORE_NAME = 'images';
 
-export const LS_FILES_KEY = 'kapkin.files';
-export const LS_BACKGROUND_KEY = 'kapkin.background';
+export const LS_FILES_KEY = 'files';
+export const LS_BACKGROUND_KEY = 'background';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -70,12 +70,12 @@ export const deleteImageBlob = async (key: string): Promise<void> => {
   });
 };
 
-export const saveFilesToLocalStorage = (files: DropzoneFile[]) => {
-  localStorage.setItem(LS_FILES_KEY, JSON.stringify(files));
+export const saveFilesToLocalStorage = (files: DropzoneFile[], layerId: string) => {
+  localStorage.setItem(`${LS_FILES_KEY}-${layerId}`, JSON.stringify(files));
 };
 
-export const loadFilesFromLocalStorage = (): DropzoneFile[] => {
-  const raw = localStorage.getItem(LS_FILES_KEY);
+export const loadFilesFromLocalStorage = (layerId: string): DropzoneFile[] => {
+  const raw = localStorage.getItem(`${LS_FILES_KEY}-${layerId}`);
   if (!raw) return [];
 
   try {
@@ -86,17 +86,17 @@ export const loadFilesFromLocalStorage = (): DropzoneFile[] => {
   }
 };
 
-export const saveBackgroundToLocalStorage = (backgroundId: string | null) => {
+export const saveBackgroundToLocalStorage = (backgroundId: string | null, layerId: string) => {
   if (!backgroundId) {
-    localStorage.removeItem(LS_BACKGROUND_KEY);
+    localStorage.removeItem(`${LS_BACKGROUND_KEY}-${layerId}`);
     return;
   }
 
-  localStorage.setItem(LS_BACKGROUND_KEY, JSON.stringify(backgroundId));
+  localStorage.setItem(`${LS_BACKGROUND_KEY}-${layerId}`, JSON.stringify(backgroundId));
 };
 
-export const loadBackgroundFromLocalStorage = (): string | null => {
-  const raw = localStorage.getItem(LS_BACKGROUND_KEY);
+export const loadBackgroundFromLocalStorage = (layerId: string): string | null => {
+  const raw = localStorage.getItem(`${LS_BACKGROUND_KEY}-${layerId}`);
   if (!raw) return null;
 
   try {
@@ -106,4 +106,17 @@ export const loadBackgroundFromLocalStorage = (): string | null => {
   } catch {
     return null;
   }
+};
+
+export const deleteLayerDataFromStorage = (layerId: string) => {
+  const savedFiles = loadFilesFromLocalStorage(layerId);
+  const savedBackground = loadBackgroundFromLocalStorage(layerId);
+
+  savedFiles.forEach(({ id }) => deleteImageBlob(id));
+  if (savedBackground) {
+    deleteImageBlob(savedBackground);
+  }
+
+  localStorage.removeItem(`${LS_FILES_KEY}-${layerId}`);
+  localStorage.removeItem(`${LS_BACKGROUND_KEY}-${layerId}`);
 };

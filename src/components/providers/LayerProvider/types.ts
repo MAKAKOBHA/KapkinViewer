@@ -1,4 +1,4 @@
-import { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 
 export type LayerItem = {
   id: string;
@@ -10,7 +10,8 @@ export type LayerContextType = {
   setIsLayerModalOpen: Dispatch<SetStateAction<boolean>>;
   layers: LayerItem[];
   setLayers: Dispatch<SetStateAction<LayerItem[]>>;
-  activeId: string | null;
-  setActiveId: Dispatch<SetStateAction<string | null>>;
-  idCounterRef: MutableRefObject<number>;
+  activeId: string;
+  setActiveId: Dispatch<SetStateAction<string>>;
+  isInputActive: boolean;
+  setIsInputActive: Dispatch<SetStateAction<boolean>>;
 };

@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 import { DiceVariant } from '../types';
+import { useLayerContext } from 'components/providers';
 
 type DiceRecord = {
   id: number;
@@ -32,9 +33,11 @@ export const useDice = (): {
   const [dices, setDices] = useState<DiceRecord[]>([]);
   const [diceIdRef, getDiceIdRef] = useCurrentRef(0);
   const [rollTrigger, setRollTrigger] = useState(false);
+  const { isInputActive } = useLayerContext();
 
   useEffect(() => {
     const handleDiceSelect = (e: KeyboardEvent) => {
+      if (isInputActive) return;
       if (e.key === ' ') {
         setRollTrigger(true);
         return;
@@ -55,7 +58,7 @@ export const useDice = (): {
 
     document.addEventListener('keydown', handleDiceSelect);
     return () => document.removeEventListener('keydown', handleDiceSelect);
-  }, [diceIdRef, getDiceIdRef]);
+  }, [diceIdRef, getDiceIdRef, isInputActive]);
 
   const removeDice = (e: React.MouseEvent<HTMLDivElement>, idToDelete: number) => {
     e.preventDefault();

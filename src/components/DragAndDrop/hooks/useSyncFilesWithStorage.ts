@@ -8,6 +8,7 @@ import {
 } from '../storage';
 import { Background, DropzoneFile } from '../types';
 import { DEFAULT_BACKGROUND } from '../constants/background';
+import { useLayerContext } from 'components/providers';
 
 export const useSyncFilesWithStorage = ({
   files,
@@ -21,12 +22,18 @@ export const useSyncFilesWithStorage = ({
   setBackground: Dispatch<SetStateAction<Background>>;
 }) => {
   const [hasHydrated, setHasHydrated] = useState(false);
+  const { activeId } = useLayerContext();
 
   useEffect(() => {
+    setHasHydrated(false);
+  }, [activeId]);
+
+  useEffect(() => {
+    if (hasHydrated) return;
     let isActive = true;
 
     const hydrateFromStorage = async () => {
-      const persistedFiles = loadFilesFromLocalStorage();
+      const persistedFiles = loadFilesFromLocalStorage(activeId);
       const hydratedFiles = await Promise.all(
         persistedFiles.map(async (file) => {
           if (!file.id) return null;
@@ -44,7 +51,7 @@ export const useSyncFilesWithStorage = ({
 
       setFiles(hydratedFiles.filter(Boolean) as DropzoneFile[]);
 
-      const persistedBackgroundId = loadBackgroundFromLocalStorage();
+      const persistedBackgroundId = loadBackgroundFromLocalStorage(activeId);
       if (persistedBackgroundId) {
         const blob = await getImageBlob(persistedBackgroundId);
         if (!isActive) return;
@@ -54,8 +61,11 @@ export const useSyncFilesWithStorage = ({
           setBackground({ id: persistedBackgroundId, image: preview });
         } else {
           setBackground(DEFAULT_BACKGROUND);
-          saveBackgroundToLocalStorage(null);
+          saveBackgroundToLocalStorage(null, activeId);
         }
+      } else {
+        setBackground(DEFAULT_BACKGROUND);
+        saveBackgroundToLocalStorage(null, activeId);
       }
 
       setHasHydrated(true);
@@ -66,13 +76,13 @@ export const useSyncFilesWithStorage = ({
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [hasHydrated, activeId]);
 
   useEffect(() => {
     if (!hasHydrated) return;
 
     const timeout = setTimeout(() => {
-      saveFilesToLocalStorage(files);
+      saveFilesToLocalStorage(files, activeId);
     }, 100);
 
     return () => clearTimeout(timeout);
@@ -82,10 +92,10 @@ export const useSyncFilesWithStorage = ({
     if (!hasHydrated) return;
 
     if (background.id) {
-      saveBackgroundToLocalStorage(background.id);
+      saveBackgroundToLocalStorage(background.id, activeId);
       return;
     }
 
-    saveBackgroundToLocalStorage(null);
+    saveBackgroundToLocalStorage(null, activeId);
   }, [background.id, hasHydrated]);
 };

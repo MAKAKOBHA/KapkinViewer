@@ -1,8 +1,10 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import Draggable from 'react-draggable';
 import './LayerModal.scss';
 import { Icon } from 'components/icons';
 import { LayerItem, useLayerContext } from 'components/providers';
+import { v4 as uuidv4 } from 'uuid';
+import { deleteLayerDataFromStorage } from 'components/DragAndDrop';
 
 const MODAL_MARGIN = 12;
 
@@ -10,12 +12,20 @@ export const LayerModal: React.FC = () => {
   const layerModalRef = useRef<HTMLDivElement>(null);
   const hasMeasuredRef = useRef(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const { layers, setLayers, activeId, setActiveId, idCounterRef } = useLayerContext();
+  const { layers, setLayers, activeId, setActiveId, setIsInputActive } = useLayerContext();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [newLayerName, setNewLayerName] = useState('');
+
+  useEffect(() => {
+    if (editingId || isAdding) {
+      setIsInputActive(true);
+    } else {
+      setIsInputActive(false);
+    }
+  }, [editingId, isAdding]);
 
   useLayoutEffect(() => {
     if (!layerModalRef.current || hasMeasuredRef.current) return;
@@ -27,8 +37,6 @@ export const LayerModal: React.FC = () => {
     });
     hasMeasuredRef.current = true;
   }, []);
-
-  const getNextLayerId = () => `layer-${idCounterRef.current++}`;
 
   const startEdit = (layer: LayerItem) => {
     setEditingId(layer.id);
@@ -56,13 +64,14 @@ export const LayerModal: React.FC = () => {
     setLayers((prev) => {
       const next = prev.filter((layer) => layer.id !== id);
       if (activeId === id) {
-        setActiveId(next[0]?.id ?? null);
+        setActiveId(next[0]?.id);
       }
       if (editingId === id) {
         cancelEdit();
       }
       return next;
     });
+    deleteLayerDataFromStorage(id);
   };
 
   const startAdd = () => {
@@ -79,7 +88,7 @@ export const LayerModal: React.FC = () => {
   const saveAdd = () => {
     const trimmed = newLayerName.trim();
     if (!trimmed) return;
-    const nextId = getNextLayerId();
+    const nextId = uuidv4();
     setLayers((prev) => [...prev, { id: nextId, name: trimmed }]);
     setActiveId(nextId);
     setNewLayerName('');
@@ -178,6 +187,7 @@ export const LayerModal: React.FC = () => {
                             handleDelete(layer.id);
                           }}
                           aria-label="Delete layer"
+                          disabled={layers.length <= 1}
                         >
                           <Icon icon="trash" />
                         </button>

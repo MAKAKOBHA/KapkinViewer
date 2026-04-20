@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { LayerContextType, LayerItem } from './types';
@@ -44,8 +43,8 @@ const getInitalActiveId = () => {
 export const LayerProvider: FC<PropsWithChildren> = ({ children }) => {
   const [isLayerModalOpen, setIsLayerModalOpen] = useState(false);
   const [layers, setLayers] = useState<LayerItem[]>(() => getInitialLayers());
-  const [activeId, setActiveId] = useState<string | null>(() => getInitalActiveId());
-  const idCounterRef = useRef(layers.length + 1);
+  const [activeId, setActiveId] = useState<string>(() => getInitalActiveId());
+  const [isInputActive, setIsInputActive] = useState<boolean>(false);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_LAYERS_KEY, JSON.stringify(layers));
@@ -64,9 +63,10 @@ export const LayerProvider: FC<PropsWithChildren> = ({ children }) => {
       setLayers,
       activeId,
       setActiveId,
-      idCounterRef,
+      isInputActive,
+      setIsInputActive,
     }),
-    [isLayerModalOpen, layers, activeId],
+    [isLayerModalOpen, layers, activeId, isInputActive],
   );
 
   return <LayerContext.Provider value={contextValue}>{children}</LayerContext.Provider>;
