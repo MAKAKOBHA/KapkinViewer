@@ -19,11 +19,9 @@ export const useSyncCanvas = () => {
 
   useEffect(() => {
     const hydrateFromStorage = async () => {
+      handleClearCanvas();
       const blob = await getImageBlob(`${activeId}-canvas`);
-      if (!blob) {
-        handleClearCanvas();
-        return;
-      }
+      if (!blob) return;
 
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
