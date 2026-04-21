@@ -119,4 +119,5 @@ export const deleteLayerDataFromStorage = (layerId: string) => {
 
   localStorage.removeItem(`${LS_FILES_KEY}-${layerId}`);
   localStorage.removeItem(`${LS_BACKGROUND_KEY}-${layerId}`);
+  deleteImageBlob(`${layerId}-canvas`);
 };

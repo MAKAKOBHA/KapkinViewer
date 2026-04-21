@@ -1,6 +1,7 @@
 import { useDrawContext } from 'components/providers';
 import { FC, useCallback, useEffect } from 'react';
 import './Canvas.scss';
+import { useSyncCanvas } from './lib/use-sync-canvas';
 
 export const Canvas: FC = () => {
   const {
@@ -14,6 +15,7 @@ export const Canvas: FC = () => {
     lastPointRef,
   } = useDrawContext();
 
+  const { saveCanvas } = useSyncCanvas();
   const isCanvasEnabled = Boolean(activeTool && isBrushModalOpen);
 
   const getCanvasPoint = useCallback((event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
@@ -82,7 +84,8 @@ export const Canvas: FC = () => {
   const stopDrawing = useCallback(() => {
     isDrawingRef.current = false;
     lastPointRef.current = null;
-  }, []);
+    saveCanvas();
+  }, [saveCanvas]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
