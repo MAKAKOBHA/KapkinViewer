@@ -51,6 +51,7 @@ export const Dice: FC<DiceProps> = ({
           fontSize: DICE_STYLES.get(diceVariant)!.fontSize,
           width: '100px',
           textAlign: 'center',
+          fontFamily:'Lombardina Two, StRome, Roboto Condensed, sans-serif'
         }}
       >
         {currentNumber}

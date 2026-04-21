@@ -72,7 +72,14 @@ export const DragAndDrop: React.FC = () => {
             >
               {file.health !== undefined && file.health >= 0 && (
                 <svg viewBox="0 0 40 40" style={{ position: 'absolute', top: '-40%' }}>
-                  <text x="0" y="15" style={{ fill: '#e11e1e' }}>
+                  <text
+                    x="0"
+                    y="15"
+                    style={{
+                      fill: '#e11e1e',
+                      fontFamily: 'Lombardina Two, StRome, Roboto Condensed, sans-serif',
+                    }}
+                  >
                     {file.health}
                   </text>
                 </svg>
