@@ -1,6 +1,7 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
-import { ImageType } from '../types';
+import { Dispatch, SetStateAction, useState } from 'react';
 import { useDrawContext, useLayerContext } from 'components/providers';
+import { useHotkeys } from 'hooks/hotkeys';
+import { ImageType } from '../types';
 
 export const useKeyPress = (): {
   imageType: ImageType;
@@ -12,36 +13,19 @@ export const useKeyPress = (): {
   const [isGridEnabled, setIsGridEnabled] = useState(false);
   const [isEidosEnabled, setIsEidosEnabled] = useState(false);
   const { setIsBrushModalOpen } = useDrawContext();
-  const { isInputActive, setIsLayerModalOpen } = useLayerContext();
+  const { setIsLayerModalOpen } = useLayerContext();
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key.toLowerCase();
-      if (key === 'pagedown') {
-        setIsLayerModalOpen((p) => !p);
-      }
-      if (isInputActive) return;
+  const toggleImageType = (type: ImageType) =>
+    setImageType((current) => (current === type ? 'normal' : type));
 
-      if (key === 'b' || key === 'и') {
-        setImageType((p) => (p === 'background' ? 'normal' : 'background'));
-      }
-      if (key === 'l' || key === 'д') {
-        setImageType((p) => (p === 'battle' ? 'normal' : 'battle'));
-      }
-      if (key === 'm' || key === 'ь') {
-        setIsGridEnabled((p) => !p);
-      }
-      if (key === "'" || key === 'э') {
-        setIsEidosEnabled((p) => !p);
-      }
-      if (key === 'd' || key === 'в') {
-        setIsBrushModalOpen((p) => !p);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isInputActive]);
+  useHotkeys({
+    layerModal: () => setIsLayerModalOpen((isOpen) => !isOpen),
+    backgroundMode: () => toggleImageType('background'),
+    battleMode: () => toggleImageType('battle'),
+    grid: () => setIsGridEnabled((isEnabled) => !isEnabled),
+    eidos: () => setIsEidosEnabled((isEnabled) => !isEnabled),
+    brushModal: () => setIsBrushModalOpen((isOpen) => !isOpen),
+  });
 
   return {
     imageType,

@@ -1,12 +1,14 @@
 import { useEffect, useState, useCallback, Dispatch, SetStateAction } from 'react';
 import { DropzoneState, useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
+import { useHotkeys } from 'hooks/hotkeys';
 import { Background, DropzoneFile, ImageType } from '../types';
 import { adjustImageSizeToViewport, adjustRenderedImageDimensions } from '../helpers';
 import { useKeyPress } from './useKeyPress';
 import { deleteImageBlob, getImageBlob, putImageBlob } from '../storage';
 import { DEFAULT_BACKGROUND } from '../constants/background';
 import { useSyncFilesWithStorage } from './useSyncFilesWithStorage';
+import { createPreviewUrl, revokePreviewUrl } from '../preview-urls';
 
 type MouseEventFunction = (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
 
@@ -66,10 +68,11 @@ export const useFileController = (): FileControllerData => {
         // Если режим добавления фона активен
         const file = acceptedFiles[0];
         if (file) {
-          const preview = URL.createObjectURL(file);
           const newId = `background-${uuidv4()}`;
+          const preview = createPreviewUrl(newId, file);
           void putImageBlob(newId, file);
           if (background.id) {
+            revokePreviewUrl(background.id);
             void deleteImageBlob(background.id);
           }
           setBackground({ id: newId, image: preview }); // Устанавливаем фоновое изображение
@@ -81,7 +84,7 @@ export const useFileController = (): FileControllerData => {
           return new Promise<DropzoneFile>((resolve, reject) => {
             const img = new Image();
             const id = `${file.name}-${uuidv4()}`;
-            const preview = URL.createObjectURL(file);
+            const preview = createPreviewUrl(id, file);
 
             void putImageBlob(id, file);
 
@@ -141,20 +144,12 @@ export const useFileController = (): FileControllerData => {
     setFiles((prevFiles) => {
       const fileToDelete = prevFiles.find((file) => file.id === id);
       if (fileToDelete) {
+        revokePreviewUrl(fileToDelete.id);
         void deleteImageBlob(fileToDelete.id);
       }
       return prevFiles.filter((file) => file.id !== id);
     });
   }, []);
-
-  const onDragOver = (e: DragEvent) => {
-    e.preventDefault();
-    setIsDragVisible(true);
-  };
-
-  const onDragEnd = () => {
-    setIsDragVisible(false);
-  };
 
   const duplicateImage = (e: React.MouseEvent<HTMLDivElement>, id: string) => {
     e.preventDefault();
@@ -170,46 +165,47 @@ export const useFileController = (): FileControllerData => {
 
       void (async () => {
         const blob = await getImageBlob(selectedFile.id);
-        if (blob) {
-          await putImageBlob(newId, blob);
-        }
+        if (!blob) return;
+
+        await putImageBlob(newId, blob);
+        // У копии свой object URL: иначе удаление оригинала погасило бы её превью.
+        const preview = createPreviewUrl(newId, blob);
+        setFiles((prevFiles) =>
+          prevFiles.map((file) => (file.id === newId ? { ...file, preview } : file)),
+        );
       })();
     }
   };
 
   useEffect(() => {
-    window.addEventListener('resize', () => adjustRenderedImageDimensions({ setFunc: setFiles }));
-    document.addEventListener('dragover', onDragOver);
-    document.addEventListener('drop', onDragEnd);
+    const handleResize = () => adjustRenderedImageDimensions({ setFunc: setFiles });
+    const handleDragOver = (e: DragEvent) => {
+      e.preventDefault();
+      setIsDragVisible(true);
+    };
+    const handleDragEnd = () => setIsDragVisible(false);
+
+    window.addEventListener('resize', handleResize);
+    document.addEventListener('dragover', handleDragOver);
+    document.addEventListener('drop', handleDragEnd);
 
     return () => {
-      window.removeEventListener('resize', () =>
-        adjustRenderedImageDimensions({ setFunc: setFiles }),
-      );
-      document.removeEventListener('dragover', onDragOver);
-      document.removeEventListener('drop', onDragEnd);
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('dragover', handleDragOver);
+      document.removeEventListener('drop', handleDragEnd);
     };
   }, []);
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!activeFileId) return;
+  const changeActiveFileHealth = (type: 'inc' | 'dec') => {
+    if (!activeFileId) return;
 
-      if (e.key === 'ArrowUp') {
-        setFiles((prevFiles) => {
-          return getNewFilesWithHealth(prevFiles, activeFileId, 'inc');
-        });
-      }
-      if (e.key === 'ArrowDown') {
-        setFiles((prevFiles) => {
-          return getNewFilesWithHealth(prevFiles, activeFileId, 'dec');
-        });
-      }
-    };
+    setFiles((prevFiles) => getNewFilesWithHealth(prevFiles, activeFileId, type));
+  };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeFileId]);
+  useHotkeys({
+    healthUp: () => changeActiveFileHealth('inc'),
+    healthDown: () => changeActiveFileHealth('dec'),
+  });
 
   return {
     files,

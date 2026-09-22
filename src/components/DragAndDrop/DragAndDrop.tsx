@@ -2,13 +2,13 @@ import React from 'react';
 import { BackgroundBorder, Eidos, Grid, ImageContainer } from 'components/common/StyledComponents';
 import GridImg from 'assets/grid.png';
 import EidosImg from 'assets/eidos.gif';
+import { LayerModal } from 'components/LayerModal';
+import { useDrawContext, useLayerContext } from 'components/providers';
 import { useFileController } from './hooks/useFileController';
 import { useMouseEvents } from './hooks/useMouseEvents';
 import './DragAndDrop.scss';
 import { BrushModal } from '../BrushModal';
 import { Canvas } from '../Canvas';
-import { useDrawContext, useLayerContext } from 'components/providers';
-import { LayerModal } from 'components/LayerModal';
 
 export const DragAndDrop: React.FC = () => {
   const {
