@@ -1,0 +1,74 @@
+$cursor-halo-size: 132px;
+
+/**
+ * Ореол не должен перехватывать события: под ним и дропзона, и холст, и токены.
+ * Двигается он только через transform, чтобы браузер обходился композитингом.
+ */
+.cursor-halo {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: $cursor-halo-size;
+  height: $cursor-halo-size;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 10000;
+  opacity: 0;
+  visibility: hidden;
+  will-change: transform, opacity;
+}
+
+.cursor-halo.is-active {
+  visibility: visible;
+}
+
+/* Кольцо, а не диск: диск закрыл бы ровно ту точку карты, куда мастер смотрит. */
+.cursor-halo::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.cursor-halo--calm::before {
+  border: 8px solid rgba(214, 222, 235, 0.8);
+  background: radial-gradient(closest-side, rgba(176, 196, 222, 0.14), rgba(176, 196, 222, 0));
+  box-shadow:
+    0 0 18px rgba(170, 190, 220, 0.45),
+    inset 0 0 18px rgba(170, 190, 220, 0.25);
+}
+
+.cursor-halo--rainbow::before {
+  background: conic-gradient(
+    #ff4d4d,
+    #ffa64d,
+    #ffe14d,
+    #6bff4d,
+    #4dd2ff,
+    #6b4dff,
+    #ff4df2,
+    #ff4d4d
+  );
+  -webkit-mask: radial-gradient(closest-side, transparent 72%, #000 78%);
+  mask: radial-gradient(closest-side, transparent 72%, #000 78%);
+  filter: saturate(1.15) drop-shadow(0 0 10px rgba(255, 255, 255, 0.35));
+  animation: cursor-halo-spin 2.4s linear infinite;
+  // Пока ореол спрятан, крутить градиент незачем.
+  animation-play-state: paused;
+}
+
+.cursor-halo--rainbow.is-active::before {
+  animation-play-state: running;
+}
+
+@keyframes cursor-halo-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cursor-halo--rainbow::before {
+    animation: none;
+  }
+}

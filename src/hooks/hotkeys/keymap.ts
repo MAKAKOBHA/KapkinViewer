@@ -7,6 +7,7 @@ export type HotkeyId =
   | 'grid'
   | 'eidos'
   | 'brushModal'
+  | 'cursorHalo'
   | 'addDice'
   | 'rollDice'
   | 'healthUp'
@@ -35,6 +36,7 @@ export const HOTKEYS: Record<HotkeyId, Hotkey> = {
   grid: { keys: ['m', 'ь'], description: 'Сетка' },
   eidos: { keys: ["'", 'э'], description: 'Эйдос' },
   brushModal: { keys: ['d', 'в'], description: 'Панель кисти' },
+  cursorHalo: { keys: ['o', 'щ'], description: 'Вид ореола курсора' },
   addDice: { keys: ['1', '2', '3', '4', '5', '6'], description: 'Добавить кубик' },
   rollDice: { keys: [' '], description: 'Перебросить все кубики' },
   healthUp: { keys: ['arrowup'], description: 'Здоровье активного токена +1' },

@@ -28,6 +28,7 @@ src/
     LayerModal/     панель локаций
     BrushModal/     панель кисти
     Dice/           кубики
+    CursorHalo/     ореол вокруг курсора: детектор тряски мышью
     providers/      LayerProvider (локации), DrawProvider (кисть)
     ui/             переиспользуемое: Button, DraggablePanel, ConfirmationModal
     icons/          SVG-иконки через <Icon icon="..." />
