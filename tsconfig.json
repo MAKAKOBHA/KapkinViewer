@@ -20,11 +20,13 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
-    // paths:
-    "baseUrl": "src/",
+    /* Алиасы. Должны совпадать с resolve.alias в vite.config.ts:
+       tsconfig отвечает за типы и редактор, vite — за сборку. */
+    "baseUrl": ".",
     "paths": {
-      "/assets/*": ["src/assets/*"],
-      "/*": ["src/*"]
+      "components/*": ["src/components/*"],
+      "hooks/*": ["src/hooks/*"],
+      "assets/*": ["src/assets/*"]
     },
     "typeRoots": ["node_modules/@types", "src/types"]
   },

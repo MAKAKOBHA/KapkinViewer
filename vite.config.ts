@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import autoprefixer from 'autoprefixer';
@@ -22,8 +23,13 @@ export default defineConfig(({ mode }) => ({
     alias: {
       components: '/src/components',
       hooks: '/src/hooks',
-      utils: '/src/utils',
       assets: '/src/assets',
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    css: false,
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 }));
