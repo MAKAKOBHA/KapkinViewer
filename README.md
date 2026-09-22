@@ -1,30 +1,69 @@
-# React + TypeScript + Vite
+# Kapkin Viewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Экран мастера для настольных ролевых игр. Мастер выводит окно на второй монитор
+или телевизор, а игроки видят карту локации, токены персонажей, сетку, пометки
+кистью и броски кубиков.
 
-Currently, two official plugins are available:
+Приложение работает целиком в браузере: сервера нет, всё лежит в хранилище
+браузера. Собранная версия живёт на GitHub Pages.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Запуск
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
-
-- Configure the top-level `parserOptions` property like this:
-
-```js
-export default {
-  // other rules...
-  parserOptions: {
-    ecmaVersion: 'latest',
-    sourceType: 'module',
-    project: ['./tsconfig.json', './tsconfig.node.json'],
-    tsconfigRootDir: __dirname,
-  },
-}
+```bash
+npm install
+npm run dev     # http://localhost:3000
 ```
 
-- Replace `plugin:@typescript-eslint/recommended` to `plugin:@typescript-eslint/recommended-type-checked` or `plugin:@typescript-eslint/strict-type-checked`
-- Optionally add `plugin:@typescript-eslint/stylistic-type-checked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and add `plugin:react/recommended` & `plugin:react/jsx-runtime` to the `extends` list
+| Команда | Что делает |
+| --- | --- |
+| `npm run dev` | Дев-сервер на порту 3000 |
+| `npm run build` | Проверка типов (`tsc`) и продакшен-сборка |
+| `npm run lint` | ESLint, падает на любом предупреждении |
+| `npm test` | Тесты (Vitest); `npm run test:watch` — в режиме наблюдения |
+| `npm run deploy` | Сборка и публикация на GitHub Pages |
+
+## Что умеет
+
+**Картинки.** Перетащите изображение в окно — оно ляжет на стол. Токены двигаются
+мышью и масштабируются колесом. Три вида картинок: обычный токен, фон локации
+(один на локацию) и боевая карта во весь экран.
+
+**Здоровье.** Стрелки ↑ и ↓ меняют счётчик у последнего выбранного токена. На нуле
+токен становится полупрозрачным.
+
+**Локации.** Список локаций — отдельная панель. Переключение полностью меняет
+сцену: свои картинки, свой фон, свой рисунок. Всё сохраняется само и переживает
+перезагрузку.
+
+**Рисование.** Кисть и ластик поверх сцены: три цвета, размер и прозрачность.
+Рисунок принадлежит локации и сохраняется вместе с ней.
+
+**Кубики.** d4, d6, d8, d10, d12, d20 с анимацией броска.
+
+## Горячие клавиши
+
+Все буквенные клавиши работают в обеих раскладках — переключать язык не нужно.
+Пока курсор стоит в поле ввода, срабатывает только `PageDown`.
+
+| Клавиша | Действие |
+| --- | --- |
+| `PageDown` | Список локаций |
+| `B` / `И` | Режим загрузки фона |
+| `L` / `Д` | Режим боевой карты |
+| `M` / `Ь` | Сетка |
+| `'` / `Э` | Эйдос |
+| `D` / `В` | Панель кисти |
+| `1`–`6` | Добавить кубик (d4, d6, d8, d10, d12, d20) |
+| `Пробел` | Перебросить все кубики |
+| `↑` / `↓` | Здоровье активного токена |
+
+Мышь: левая кнопка — тащить, правая — удалить, средняя — дублировать,
+колесо — масштаб.
+
+## Как устроено
+
+React 19 + TypeScript + Vite. Состояние — два контекста (`LayerProvider`,
+`DrawProvider`), хранилище двухуровневое: метаданные в `localStorage`, сами
+картинки и рисунок — блобами в IndexedDB.
+
+Подробности для разработки — в [CLAUDE.md](CLAUDE.md).
