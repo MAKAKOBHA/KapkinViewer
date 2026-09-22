@@ -108,16 +108,23 @@ export const loadBackgroundFromLocalStorage = (layerId: string): string | null =
   }
 };
 
-export const deleteLayerDataFromStorage = (layerId: string) => {
+export const getCanvasBlobKey = (layerId: string) => `${layerId}-canvas`;
+
+/**
+ * Удаляет всё, что принадлежит локации: метаданные из localStorage и блобы
+ * картинок с рисунком из IndexedDB. Любой новый вид данных, привязанный к
+ * локации, обязан попасть сюда — иначе он останется в хранилище навсегда.
+ */
+export const deleteLayerDataFromStorage = async (layerId: string): Promise<void> => {
   const savedFiles = loadFilesFromLocalStorage(layerId);
   const savedBackground = loadBackgroundFromLocalStorage(layerId);
 
-  savedFiles.forEach(({ id }) => deleteImageBlob(id));
-  if (savedBackground) {
-    deleteImageBlob(savedBackground);
-  }
-
   localStorage.removeItem(`${LS_FILES_KEY}-${layerId}`);
   localStorage.removeItem(`${LS_BACKGROUND_KEY}-${layerId}`);
-  deleteImageBlob(`${layerId}-canvas`);
+
+  await Promise.all([
+    ...savedFiles.map(({ id }) => deleteImageBlob(id)),
+    ...(savedBackground ? [deleteImageBlob(savedBackground)] : []),
+    deleteImageBlob(getCanvasBlobKey(layerId)),
+  ]);
 };

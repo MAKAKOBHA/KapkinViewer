@@ -1,4 +1,5 @@
-import { Dispatch, SetStateAction, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useEffect, useRef, useState } from 'react';
+import { useLayerContext } from 'components/providers';
 import {
   getImageBlob,
   loadBackgroundFromLocalStorage,
@@ -7,9 +8,19 @@ import {
   saveFilesToLocalStorage,
 } from '../storage';
 import { Background, DropzoneFile } from '../types';
+import { createPreviewUrl, revokePreviewUrlsExcept } from '../preview-urls';
 import { DEFAULT_BACKGROUND } from '../constants/background';
-import { useLayerContext } from 'components/providers';
 
+const SAVE_DEBOUNCE_MS = 100;
+
+/**
+ * Держит сцену (файлы и фон) в согласии с хранилищем активной локации.
+ *
+ * Ключевой инвариант: писать можно только в ту локацию, из которой сцена была
+ * загружена. Между сменой `activeId` и концом гидрации в состоянии ещё лежат
+ * файлы прошлой локации — сохранить их под новым ключом значит перезаписать
+ * чужие данные.
+ */
 export const useSyncFilesWithStorage = ({
   files,
   setFiles,
@@ -21,15 +32,19 @@ export const useSyncFilesWithStorage = ({
   background: Background;
   setBackground: Dispatch<SetStateAction<Background>>;
 }) => {
-  const [hasHydrated, setHasHydrated] = useState(false);
   const { activeId } = useLayerContext();
+  // Локация, чьи данные сейчас лежат в состоянии. null — гидрация не завершена.
+  const [hydratedId, setHydratedId] = useState<string | null>(null);
+  const isSynced = hydratedId === activeId;
+  const setFilesRef = useRef(setFiles);
+  const setBackgroundRef = useRef(setBackground);
+
+  setFilesRef.current = setFiles;
+  setBackgroundRef.current = setBackground;
 
   useEffect(() => {
-    setHasHydrated(false);
-  }, [activeId]);
+    if (isSynced) return undefined;
 
-  useEffect(() => {
-    if (hasHydrated) return;
     let isActive = true;
 
     const hydrateFromStorage = async () => {
@@ -39,36 +54,43 @@ export const useSyncFilesWithStorage = ({
           if (!file.id) return null;
           const blob = await getImageBlob(file.id);
           if (!blob) return null;
-          const preview = URL.createObjectURL(blob);
-          return {
-            ...file,
-            preview,
-          } as DropzoneFile;
+
+          return { ...file, preview: createPreviewUrl(file.id, blob) } as DropzoneFile;
         }),
       );
 
       if (!isActive) return;
 
-      setFiles(hydratedFiles.filter(Boolean) as DropzoneFile[]);
-
+      const nextFiles = hydratedFiles.filter(Boolean) as DropzoneFile[];
       const persistedBackgroundId = loadBackgroundFromLocalStorage(activeId);
-      if (persistedBackgroundId) {
-        const blob = await getImageBlob(persistedBackgroundId);
-        if (!isActive) return;
+      const backgroundBlob = persistedBackgroundId
+        ? await getImageBlob(persistedBackgroundId)
+        : null;
 
-        if (blob) {
-          const preview = URL.createObjectURL(blob);
-          setBackground({ id: persistedBackgroundId, image: preview });
-        } else {
-          setBackground(DEFAULT_BACKGROUND);
-          saveBackgroundToLocalStorage(null, activeId);
-        }
-      } else {
-        setBackground(DEFAULT_BACKGROUND);
+      if (!isActive) return;
+
+      const nextBackground: Background =
+        persistedBackgroundId && backgroundBlob
+          ? {
+              id: persistedBackgroundId,
+              image: createPreviewUrl(persistedBackgroundId, backgroundBlob),
+            }
+          : DEFAULT_BACKGROUND;
+
+      if (!nextBackground.id) {
         saveBackgroundToLocalStorage(null, activeId);
       }
 
-      setHasHydrated(true);
+      setFilesRef.current(nextFiles);
+      setBackgroundRef.current(nextBackground);
+
+      // Превью прошлой локации больше не нужны — иначе блобы копятся в памяти.
+      revokePreviewUrlsExcept([
+        ...nextFiles.map((file) => file.id),
+        ...(nextBackground.id ? [nextBackground.id] : []),
+      ]);
+
+      setHydratedId(activeId);
     };
 
     void hydrateFromStorage();
@@ -76,26 +98,19 @@ export const useSyncFilesWithStorage = ({
     return () => {
       isActive = false;
     };
-  }, [hasHydrated, activeId]);
+  }, [isSynced, activeId]);
 
   useEffect(() => {
-    if (!hasHydrated) return;
+    if (!isSynced) return undefined;
 
-    const timeout = setTimeout(() => {
-      saveFilesToLocalStorage(files, activeId);
-    }, 100);
+    const timeout = setTimeout(() => saveFilesToLocalStorage(files, activeId), SAVE_DEBOUNCE_MS);
 
     return () => clearTimeout(timeout);
-  }, [files, hasHydrated]);
+  }, [files, isSynced, activeId]);
 
   useEffect(() => {
-    if (!hasHydrated) return;
+    if (!isSynced) return;
 
-    if (background.id) {
-      saveBackgroundToLocalStorage(background.id, activeId);
-      return;
-    }
-
-    saveBackgroundToLocalStorage(null, activeId);
-  }, [background.id, hasHydrated]);
+    saveBackgroundToLocalStorage(background.id, activeId);
+  }, [background.id, isSynced, activeId]);
 };
