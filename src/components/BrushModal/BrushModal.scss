@@ -1,37 +1,8 @@
-.brush-modal {
-  position: absolute;
-  width: auto;
-  height: auto;
-  padding: 8px 12px;
-  background: rgba(20, 20, 20, 0.85);
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: row;
+/* Каркас панели — в DraggablePanel.scss. Здесь только начинка.
+   Двойной класс нужен, чтобы модификатор перебивал базу независимо от того,
+   в каком порядке Vite склеит стили. */
+.draggable-panel__content.brush-modal__content {
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: #ffffff;
-  z-index: 60;
-  user-select: none;
-}
-
-.brush-modal__handle {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 12px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.12);
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: grab;
-}
-
-.brush-modal__content {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-left: 10px;
 }
 
 .brush-modal__tool {

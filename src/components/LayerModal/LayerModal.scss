@@ -1,32 +1,14 @@
-.layer-modal {
-  position: absolute;
+/* Каркас панели — в DraggablePanel.scss. Двойной класс перебивает базу
+   независимо от порядка склейки стилей. */
+.draggable-panel.layer-modal {
   width: 260px;
   padding: 8px 12px 12px;
   background: rgba(20, 20, 20, 0.9);
-  border: 1px solid #3a3a3a;
-  border-radius: 8px;
-  color: #ffffff;
-  z-index: 60;
-  user-select: none;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
 }
 
-.layer-modal__handle {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 12px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.12);
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: grab;
-}
-
-.layer-modal__content {
-  padding-left: 10px;
-  display: flex;
+.draggable-panel__content.layer-modal__content {
   flex-direction: column;
-  gap: 10px;
 }
 
 .layer-modal__title {
