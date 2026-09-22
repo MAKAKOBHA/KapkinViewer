@@ -25,14 +25,15 @@ export const adjustRenderedImageDimensions = ({
     prevFiles.map((file) => {
       let newDimensions;
       let newPosition;
-      const imgElement = document.querySelector(
+      const imgElement = document.querySelector<HTMLImageElement>(
         `img[data-image-id="${file.id}"]`,
-      ) as HTMLImageElement;
-      const { offsetWidth, offsetHeight } = imgElement;
+      );
 
       if (!imgElement) {
         return file;
       }
+
+      const { offsetWidth, offsetHeight } = imgElement;
 
       if (isInitialAdjustment) {
         newDimensions = { width: offsetWidth, height: offsetHeight };
@@ -41,7 +42,7 @@ export const adjustRenderedImageDimensions = ({
       if (!isInitialAdjustment) {
         const newX =
           file.position.x + offsetWidth >= window.innerWidth
-            ? window.innerWidth - file.dimensions.width
+            ? window.innerWidth - offsetWidth
             : file.position.x;
 
         const newY =

@@ -1,5 +1,5 @@
 import { useDrawContext } from 'components/providers';
-import { FC, useCallback, useEffect } from 'react';
+import { FC, useCallback, useLayoutEffect } from 'react';
 import './Canvas.scss';
 import { useSyncCanvas } from './lib/use-sync-canvas';
 
@@ -18,16 +18,19 @@ export const Canvas: FC = () => {
   const { saveCanvas } = useSyncCanvas();
   const isCanvasEnabled = Boolean(activeTool && isBrushModalOpen);
 
-  const getCanvasPoint = useCallback((event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return null;
-    const rect = canvas.getBoundingClientRect();
+  const getCanvasPoint = useCallback(
+    (event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return null;
+      const rect = canvas.getBoundingClientRect();
 
-    return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-    };
-  }, []);
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+    },
+    [canvasRef],
+  );
 
   const drawLine = useCallback(
     (from: { x: number; y: number }, to: { x: number; y: number }) => {
@@ -55,7 +58,7 @@ export const Canvas: FC = () => {
       ctx.lineTo(to.x, to.y);
       ctx.stroke();
     },
-    [activeTool, brushColor, brushSize, brushOpacity],
+    [activeTool, brushColor, brushSize, brushOpacity, canvasRef],
   );
 
   const startDrawing = useCallback(
@@ -67,7 +70,7 @@ export const Canvas: FC = () => {
       isDrawingRef.current = true;
       lastPointRef.current = point;
     },
-    [getCanvasPoint, isCanvasEnabled],
+    [getCanvasPoint, isCanvasEnabled, isDrawingRef, lastPointRef],
   );
 
   const drawMove = useCallback(
@@ -78,35 +81,54 @@ export const Canvas: FC = () => {
       drawLine(lastPointRef.current, point);
       lastPointRef.current = point;
     },
-    [drawLine, getCanvasPoint],
+    [drawLine, getCanvasPoint, isDrawingRef, lastPointRef],
   );
 
   const stopDrawing = useCallback(() => {
     isDrawingRef.current = false;
     lastPointRef.current = null;
     saveCanvas();
-  }, [saveCanvas]);
+  }, [saveCanvas, isDrawingRef, lastPointRef]);
 
-  useEffect(() => {
+  /**
+   * Размер выставляется в layout-эффекте: он гарантированно отрабатывает раньше
+   * гидрации из useSyncCanvas, иначе загруженный рисунок стёрся бы сразу после
+   * появления — присвоение canvas.width очищает битмап.
+   */
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return undefined;
 
     const resizeCanvas = () => {
       const ratio = window.devicePixelRatio || 1;
-      canvas.width = window.innerWidth * ratio;
-      canvas.height = window.innerHeight * ratio;
+      const nextWidth = Math.round(window.innerWidth * ratio);
+      const nextHeight = Math.round(window.innerHeight * ratio);
+      if (canvas.width === nextWidth && canvas.height === nextHeight) return;
+
+      const ctx = canvas.getContext('2d');
+      // Снимок в аппаратных пикселях: ресайз обнуляет битмап, рисунок мастера
+      // при этом терять нельзя.
+      const snapshot =
+        ctx && canvas.width > 0 && canvas.height > 0
+          ? ctx.getImageData(0, 0, canvas.width, canvas.height)
+          : null;
+
+      canvas.width = nextWidth;
+      canvas.height = nextHeight;
       canvas.style.width = `${window.innerWidth}px`;
       canvas.style.height = `${window.innerHeight}px`;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+
+      if (!ctx) return;
+      if (snapshot) {
+        ctx.putImageData(snapshot, 0, 0);
       }
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     };
 
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
     return () => window.removeEventListener('resize', resizeCanvas);
-  }, []);
+  }, [canvasRef]);
 
   return (
     <canvas

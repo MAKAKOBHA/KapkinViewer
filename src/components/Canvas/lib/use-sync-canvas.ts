@@ -1,4 +1,4 @@
-import { getImageBlob, putImageBlob } from 'components/DragAndDrop/storage';
+import { getCanvasBlobKey, getImageBlob, putImageBlob } from 'components/DragAndDrop/storage';
 import { useDrawContext, useLayerContext } from 'components/providers';
 import { useCallback, useEffect } from 'react';
 
@@ -13,14 +13,14 @@ export const useSyncCanvas = () => {
     canvas.toBlob((blob) => {
       if (!blob) return;
 
-      void putImageBlob(`${activeId}-canvas`, blob);
+      void putImageBlob(getCanvasBlobKey(activeId), blob);
     }, 'image/png');
-  }, [activeId]);
+  }, [activeId, canvasRef]);
 
   useEffect(() => {
     const hydrateFromStorage = async () => {
       handleClearCanvas();
-      const blob = await getImageBlob(`${activeId}-canvas`);
+      const blob = await getImageBlob(getCanvasBlobKey(activeId));
       if (!blob) return;
 
       const canvas = canvasRef.current;
@@ -33,13 +33,19 @@ export const useSyncCanvas = () => {
       img.src = url;
 
       img.onload = () => {
+        // Снимок сохранён в аппаратных пикселях, а у контекста уже стоит
+        // масштаб devicePixelRatio — рисуем 1:1, сбросив трансформацию,
+        // иначе на экранах с масштабом рисунок раздувается.
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(img, 0, 0);
-        URL.revokeObjectURL(url); // ✅ prevent memory leaks
+        ctx.restore();
+        URL.revokeObjectURL(url);
       };
     };
 
-    hydrateFromStorage();
-  }, [activeId]);
+    void hydrateFromStorage();
+  }, [activeId, canvasRef, handleClearCanvas]);
 
   return {
     saveCanvas,
