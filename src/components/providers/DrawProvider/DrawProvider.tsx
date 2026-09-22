@@ -8,8 +8,8 @@ import {
   useRef,
   useState,
 } from 'react';
-import { BrushColor, BrushTool, DrawContext as DrawContextType } from './types';
 import { clearCanvas } from 'components/Canvas';
+import { BrushColor, BrushTool, DrawContext as DrawContextType } from './types';
 
 const DrawContext = createContext<DrawContextType | null>(null);
 
@@ -17,7 +17,7 @@ export const useDrawContext = () => {
   const context = useContext(DrawContext);
 
   if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
+    throw new Error('useDrawContext must be used within DrawProvider');
   }
 
   return context;
