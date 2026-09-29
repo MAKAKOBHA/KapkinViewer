@@ -42,6 +42,16 @@ describe('HelpModal', () => {
     expect(layers.textContent).toContain('Сохранить имя локации');
   });
 
+  it('собирает клавишу сброса и Shift-жесты в блок «Панорамирование»', () => {
+    renderHelp();
+    press('F1');
+
+    const pan = screen.getByText('Панорамирование').closest('section')!;
+    expect(pan.textContent).toContain(HOTKEYS.resetViewport.description);
+    expect(pan.textContent).toContain('Shift + колесо');
+    expect(pan.textContent).toContain('Shift + левая кнопка');
+  });
+
   it.each(Object.entries(HOTKEYS))('показывает хоткей «%s»', (_id, hotkey) => {
     renderHelp();
     press('F1');

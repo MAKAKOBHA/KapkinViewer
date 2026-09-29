@@ -1,4 +1,5 @@
 import { DropzoneFile } from './types';
+import { isViewport, Viewport } from './viewport';
 
 export const IDB_DB_NAME = 'kapkin-viewer';
 export const IDB_DB_VERSION = 1;
@@ -6,6 +7,7 @@ export const IDB_STORE_NAME = 'images';
 
 export const LS_FILES_KEY = 'files';
 export const LS_BACKGROUND_KEY = 'background';
+export const LS_VIEWPORT_KEY = 'viewport';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -108,6 +110,22 @@ export const loadBackgroundFromLocalStorage = (layerId: string): string | null =
   }
 };
 
+export const saveViewportToLocalStorage = (viewport: Viewport, layerId: string) => {
+  localStorage.setItem(`${LS_VIEWPORT_KEY}-${layerId}`, JSON.stringify(viewport));
+};
+
+export const loadViewportFromLocalStorage = (layerId: string): Viewport | null => {
+  const raw = localStorage.getItem(`${LS_VIEWPORT_KEY}-${layerId}`);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw);
+    return isViewport(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 export const getCanvasBlobKey = (layerId: string) => `${layerId}-canvas`;
 
 /**
@@ -121,6 +139,7 @@ export const deleteLayerDataFromStorage = async (layerId: string): Promise<void>
 
   localStorage.removeItem(`${LS_FILES_KEY}-${layerId}`);
   localStorage.removeItem(`${LS_BACKGROUND_KEY}-${layerId}`);
+  localStorage.removeItem(`${LS_VIEWPORT_KEY}-${layerId}`);
 
   await Promise.all([
     ...savedFiles.map(({ id }) => deleteImageBlob(id)),

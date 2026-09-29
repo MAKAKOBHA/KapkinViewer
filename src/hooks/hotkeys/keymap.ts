@@ -8,6 +8,7 @@ export type HotkeyId =
   | 'eidos'
   | 'brushModal'
   | 'cursorHalo'
+  | 'resetViewport'
   | 'addDice'
   | 'rollDice'
   | 'healthUp'
@@ -31,9 +32,10 @@ export type Hotkey = {
   label?: string;
   /**
    * В каком блоке справки показывать клавишу. По умолчанию — в общем списке;
-   * `layers` — рядом с клавишами поля ввода имени локации.
+   * `layers` — рядом с клавишами поля ввода имени локации, `pan` — рядом с
+   * Shift-жестами мыши, которыми двигают карту.
    */
-  helpSection?: 'layers';
+  helpSection?: 'layers' | 'pan';
 };
 
 export const HOTKEYS: Record<HotkeyId, Hotkey> = {
@@ -49,6 +51,11 @@ export const HOTKEYS: Record<HotkeyId, Hotkey> = {
   eidos: { keys: ["'", 'э'], description: 'Эйдос' },
   brushModal: { keys: ['d', 'в'], description: 'Панель кисти' },
   cursorHalo: { keys: ['o', 'щ'], description: 'Вид ореола курсора' },
+  resetViewport: {
+    keys: ['z', 'я'],
+    helpSection: 'pan',
+    description: 'Показать карту целиком',
+  },
   addDice: {
     keys: ['1', '2', '3', '4', '5', '6'],
     label: '1–6',

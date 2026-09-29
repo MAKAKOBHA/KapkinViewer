@@ -12,4 +12,37 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+
+  // Зум и панорама сцены: значения пишет useSceneViewport, минуя React.
+  --scene-scale: 1;
+  --scene-x: 0px;
+  --scene-y: 0px;
+}
+
+// Пока мастер возит карту, курсор об этом говорит — и ничего не выделяется.
+.drag-and-drop-root.is-panning,
+.drag-and-drop-root.is-panning * {
+  cursor: grabbing;
+  user-select: none;
+}
+
+// Слои, которые едут и масштабируются вместе с картой: фон, боевая карта,
+// рисунок кистью и токены. Сетка, кубики и панели остаются экранными.
+.scene-layer {
+  position: absolute;
+  inset: 0;
+  transform: translate(var(--scene-x), var(--scene-y)) scale(var(--scene-scale));
+  transform-origin: 0 0;
+  will-change: transform;
+  // Сама обёртка мышь не ловит: растянутая на всю сцену, она перекрыла бы холст
+  // рисования. События достаются картинкам и холсту.
+  pointer-events: none;
+}
+
+.scene-layer--below {
+  z-index: 10;
+}
+
+.scene-layer--above {
+  z-index: 40;
 }

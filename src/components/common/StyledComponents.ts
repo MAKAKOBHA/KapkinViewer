@@ -48,6 +48,8 @@ export const ImageContainer = styled.div.attrs<{
 }))`
   position: absolute;
   cursor: grab;
+  /* Трансформируемая обёртка сцены мышь не ловит — картинки ловят. */
+  pointer-events: auto;
 `;
 
 export const DicesContainer = styled.div`

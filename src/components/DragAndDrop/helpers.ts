@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction } from 'react';
 import { DropzoneFile } from './types';
+import { getWorldSize } from './viewport';
 
 export const adjustImageSizeToViewport = (
   width: number,
@@ -40,14 +41,18 @@ export const adjustRenderedImageDimensions = ({
       }
 
       if (!isInitialAdjustment) {
+        // Границы мира, а не видимого экрана: уехать за край экрана токену
+        // теперь можно, за край карты — нет.
+        const world = getWorldSize();
+
         const newX =
-          file.position.x + offsetWidth >= window.innerWidth
-            ? window.innerWidth - offsetWidth
+          file.position.x + offsetWidth >= world.width
+            ? world.width - offsetWidth
             : file.position.x;
 
         const newY =
-          file.position.y + offsetHeight >= window.innerHeight
-            ? window.innerHeight - offsetHeight
+          file.position.y + offsetHeight >= world.height
+            ? world.height - offsetHeight
             : file.position.y;
 
         newPosition = { x: newX, y: newY };

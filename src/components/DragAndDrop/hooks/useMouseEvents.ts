@@ -2,10 +2,16 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useRefs } from 'hooks/useRefs';
 import { UseMouseEvents } from '../types';
 import { updateImageDimensions } from '../helpers';
+import { clampToWorld, getWorldSize, screenToWorld } from '../viewport';
 
 const ZOOM_DELTA = 20;
 
-export const useMouseEvents: UseMouseEvents = ({ files, setFiles, setActiveFileId }) => {
+export const useMouseEvents: UseMouseEvents = ({
+  files,
+  setFiles,
+  setActiveFileId,
+  viewportRef,
+}) => {
   const movingRef = useRef<{
     id: string;
     isMoving: boolean;
@@ -19,37 +25,36 @@ export const useMouseEvents: UseMouseEvents = ({ files, setFiles, setActiveFileI
 
   const onMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (!movingRef.current?.isMoving) return;
+      const moving = movingRef.current;
+      if (!moving?.isMoving) return;
 
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+      // Позиции токенов живут в координатах мира, мышь — в координатах экрана.
+      const point = screenToWorld({ x: e.clientX, y: e.clientY }, viewportRef.current);
+      const world = getWorldSize();
 
       setFiles((prevFiles) =>
         prevFiles.map((file) => {
-          if (file.id === movingRef.current?.id) {
-            const newX = Math.min(
-              Math.max(e.clientX - movingRef.current.offsetX, 0),
-              viewportWidth - file.dimensions.width,
-            );
-            const newY = Math.min(
-              Math.max(e.clientY - movingRef.current.offsetY, 0),
-              viewportHeight - file.dimensions.height,
-            );
+          if (file.id !== moving.id) return file;
 
-            return {
-              ...file,
-              position: { x: newX, y: newY },
-            };
-          }
-          return file;
+          return {
+            ...file,
+            position: clampToWorld(
+              { x: point.x - moving.offsetX, y: point.y - moving.offsetY },
+              file.dimensions,
+              world,
+            ),
+          };
         }),
       );
     },
-    [setFiles],
+    [setFiles, viewportRef],
   );
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, id: string) => {
+      // Shift + ЛКМ возит сцену целиком — токен в этом жесте не участвует.
+      if (e.shiftKey) return;
+
       e.stopPropagation();
       e.preventDefault();
 
@@ -57,13 +62,14 @@ export const useMouseEvents: UseMouseEvents = ({ files, setFiles, setActiveFileI
       if (!img) return;
 
       setActiveFileId(id);
-      const offsetX = e.clientX - img.position.x;
-      const offsetY = e.clientY - img.position.y;
+      const point = screenToWorld({ x: e.clientX, y: e.clientY }, viewportRef.current);
+      const offsetX = point.x - img.position.x;
+      const offsetY = point.y - img.position.y;
 
       movingRef.current = { id, isMoving: true, offsetX, offsetY };
       document.addEventListener('mousemove', onMouseMove);
     },
-    [files, onMouseMove, setActiveFileId],
+    [files, onMouseMove, setActiveFileId, viewportRef],
   );
 
   const onMouseUp = () => {
@@ -73,6 +79,10 @@ export const useMouseEvents: UseMouseEvents = ({ files, setFiles, setActiveFileI
 
   const handleZoom = useCallback(
     (e: WheelEvent, id: string) => {
+      // С Shift колесо масштабирует сцену: не глотаем событие, пусть всплывёт
+      // к корню, где его ждёт useSceneViewport.
+      if (e.shiftKey) return;
+
       e.preventDefault();
       e.stopPropagation();
 
@@ -82,8 +92,9 @@ export const useMouseEvents: UseMouseEvents = ({ files, setFiles, setActiveFileI
       if (target) {
         const newWidth = target.dimensions.width + delta;
         const newHeight = newWidth * (target.dimensions.height / target.dimensions.width);
+        const world = getWorldSize();
 
-        if (newWidth > 20 && newWidth <= window.innerWidth && newHeight <= window.innerHeight) {
+        if (newWidth > 20 && newWidth <= world.width && newHeight <= world.height) {
           updateImageDimensions({
             id,
             dimensions: { height: newHeight, width: newWidth },

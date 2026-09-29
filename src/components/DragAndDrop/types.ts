@@ -1,5 +1,6 @@
-import { Dispatch, SetStateAction } from 'react';
+import { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { useRefsData } from 'hooks/useRefs';
+import { Viewport } from './viewport';
 
 export type ImageType = 'background' | 'battle' | 'normal';
 
@@ -22,6 +23,7 @@ type UseMouseEventsParams = {
   files: DropzoneFile[];
   setFiles: Dispatch<SetStateAction<DropzoneFile[]>>;
   setActiveFileId: Dispatch<SetStateAction<string>>;
+  viewportRef: MutableRefObject<Viewport>;
 };
 
 export type UseMouseEventsData = {

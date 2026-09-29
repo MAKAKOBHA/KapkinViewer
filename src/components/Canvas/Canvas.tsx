@@ -1,9 +1,16 @@
 import { useDrawContext } from 'components/providers';
-import { FC, useCallback, useLayoutEffect } from 'react';
+import { FC, MutableRefObject, useCallback, useLayoutEffect } from 'react';
+import { Viewport } from 'components/DragAndDrop/viewport';
 import './Canvas.scss';
 import { useSyncCanvas } from './lib/use-sync-canvas';
 
-export const Canvas: FC = () => {
+/**
+ * Холст едет и масштабируется вместе с картой, поэтому ему нужен зум сцены:
+ * пометка кистью принадлежит месту на карте, а не месту на экране.
+ */
+type Props = { viewportRef: MutableRefObject<Viewport> };
+
+export const Canvas: FC<Props> = ({ viewportRef }) => {
   const {
     isBrushModalOpen,
     activeTool,
@@ -22,14 +29,17 @@ export const Canvas: FC = () => {
     (event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
       if (!canvas) return null;
+      // rect уже посчитан с зумом сцены, а рисуем мы в координатах холста —
+      // отсюда деление на масштаб.
       const rect = canvas.getBoundingClientRect();
+      const { scale } = viewportRef.current;
 
       return {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
+        x: (event.clientX - rect.left) / scale,
+        y: (event.clientY - rect.top) / scale,
       };
     },
-    [canvasRef],
+    [canvasRef, viewportRef],
   );
 
   const drawLine = useCallback(
@@ -63,7 +73,8 @@ export const Canvas: FC = () => {
 
   const startDrawing = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!isCanvasEnabled) return;
+      // Shift + ЛКМ возит сцену — даже когда кисть в руках.
+      if (!isCanvasEnabled || event.shiftKey) return;
       event.preventDefault();
       const point = getCanvasPoint(event);
       if (!point) return;

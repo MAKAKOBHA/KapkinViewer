@@ -1,4 +1,11 @@
-import { useEffect, useState, useCallback, Dispatch, SetStateAction } from 'react';
+import {
+  useEffect,
+  useState,
+  useCallback,
+  Dispatch,
+  MutableRefObject,
+  SetStateAction,
+} from 'react';
 import { DropzoneState, useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
 import { useHotkeys } from 'hooks/hotkeys';
@@ -9,6 +16,7 @@ import { deleteImageBlob, getImageBlob, putImageBlob } from '../storage';
 import { DEFAULT_BACKGROUND } from '../constants/background';
 import { useSyncFilesWithStorage } from './useSyncFilesWithStorage';
 import { createPreviewUrl, revokePreviewUrl } from '../preview-urls';
+import { screenToWorld, Viewport } from '../viewport';
 
 type MouseEventFunction = (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
 
@@ -52,7 +60,7 @@ const getNewFilesWithHealth = (
   return newFiles;
 };
 
-export const useFileController = (): FileControllerData => {
+export const useFileController = (viewportRef: MutableRefObject<Viewport>): FileControllerData => {
   const [files, setFiles] = useState<DropzoneFile[]>([]);
   const [isDragVisible, setIsDragVisible] = useState(false);
   const [background, setBackground] = useState<Background>(DEFAULT_BACKGROUND);
@@ -98,15 +106,28 @@ export const useFileController = (): FileControllerData => {
                 isBattleImage,
               );
 
+              // Картинка должна лечь туда, куда мастер смотрит, и выглядеть на
+              // экране одинаково при любом приближении — поэтому и центр, и
+              // размер считаются от видимой области, а не от всей карты.
+              const viewport = viewportRef.current;
+              const dimensions = {
+                width: adjustedImage.width / viewport.scale,
+                height: adjustedImage.height / viewport.scale,
+              };
+              const center = screenToWorld(
+                { x: window.innerWidth / 2, y: window.innerHeight / 2 },
+                viewport,
+              );
+
               resolve({
                 id,
                 preview,
                 name: file.name,
                 position: {
-                  x: window.innerWidth / 2 - adjustedImage.width / 2,
-                  y: window.innerHeight / 2 - adjustedImage.height / 2,
+                  x: center.x - dimensions.width / 2,
+                  y: center.y - dimensions.height / 2,
                 },
-                dimensions: adjustedImage,
+                dimensions,
                 imageType,
               });
             };
@@ -131,7 +152,7 @@ export const useFileController = (): FileControllerData => {
         });
       }
     },
-    [background.id, imageType, setImageType],
+    [background.id, imageType, setImageType, viewportRef],
   );
 
   const { getRootProps, getInputProps } = useDropzone({

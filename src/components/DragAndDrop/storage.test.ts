@@ -6,9 +6,11 @@ import {
   getImageBlob,
   loadBackgroundFromLocalStorage,
   loadFilesFromLocalStorage,
+  loadViewportFromLocalStorage,
   putImageBlob,
   saveBackgroundToLocalStorage,
   saveFilesToLocalStorage,
+  saveViewportToLocalStorage,
 } from './storage';
 import { DropzoneFile } from './types';
 
@@ -61,6 +63,30 @@ describe('фон локации', () => {
   });
 });
 
+describe('зум локации', () => {
+  it('хранит зум отдельно для каждой локации', () => {
+    saveViewportToLocalStorage({ scale: 3, x: -200, y: -100 }, 'tavern');
+    saveViewportToLocalStorage({ scale: 1, x: 0, y: 0 }, 'dungeon');
+
+    expect(loadViewportFromLocalStorage('tavern')).toEqual({ scale: 3, x: -200, y: -100 });
+    expect(loadViewportFromLocalStorage('dungeon')).toEqual({ scale: 1, x: 0, y: 0 });
+  });
+
+  it('возвращает null для локации, которую ещё не приближали', () => {
+    expect(loadViewportFromLocalStorage('unknown')).toBeNull();
+  });
+
+  it('переживает испорченные данные', () => {
+    localStorage.setItem('viewport-tavern', '{сломано');
+    expect(loadViewportFromLocalStorage('tavern')).toBeNull();
+  });
+
+  it('отвергает значение не той формы', () => {
+    localStorage.setItem('viewport-tavern', '{"scale":"много"}');
+    expect(loadViewportFromLocalStorage('tavern')).toBeNull();
+  });
+});
+
 /**
  * Содержимое блоба здесь не проверяется: fake-indexeddb не умеет клонировать
  * jsdom-Blob и возвращает пустой объект. Тесты сторожат жизненный цикл ключей —
@@ -89,11 +115,13 @@ describe('удаление локации', () => {
   it('уносит метаданные, блобы файлов, фон и рисунок — и только своей локации', async () => {
     saveFilesToLocalStorage([makeFile('tavern-file')], 'tavern');
     saveBackgroundToLocalStorage('tavern-bg', 'tavern');
+    saveViewportToLocalStorage({ scale: 4, x: -300, y: -200 }, 'tavern');
     await putImageBlob('tavern-file', new Blob(['f']));
     await putImageBlob('tavern-bg', new Blob(['b']));
     await putImageBlob(getCanvasBlobKey('tavern'), new Blob(['c']));
 
     saveFilesToLocalStorage([makeFile('dungeon-file')], 'dungeon');
+    saveViewportToLocalStorage({ scale: 2, x: -50, y: -50 }, 'dungeon');
     await putImageBlob('dungeon-file', new Blob(['f2']));
     await putImageBlob(getCanvasBlobKey('dungeon'), new Blob(['c2']));
 
@@ -101,12 +129,14 @@ describe('удаление локации', () => {
 
     expect(localStorage.getItem('files-tavern')).toBeNull();
     expect(localStorage.getItem('background-tavern')).toBeNull();
+    expect(loadViewportFromLocalStorage('tavern')).toBeNull();
     expect(await getImageBlob('tavern-file')).toBeNull();
     expect(await getImageBlob('tavern-bg')).toBeNull();
     expect(await getImageBlob(getCanvasBlobKey('tavern'))).toBeNull();
 
     // соседняя локация не пострадала
     expect(loadFilesFromLocalStorage('dungeon').map((f) => f.id)).toEqual(['dungeon-file']);
+    expect(loadViewportFromLocalStorage('dungeon')).not.toBeNull();
     expect(await getImageBlob('dungeon-file')).not.toBeNull();
     expect(await getImageBlob(getCanvasBlobKey('dungeon'))).not.toBeNull();
   });
