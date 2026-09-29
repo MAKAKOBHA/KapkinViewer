@@ -11,7 +11,8 @@ export type HotkeyId =
   | 'addDice'
   | 'rollDice'
   | 'healthUp'
-  | 'healthDown';
+  | 'healthDown'
+  | 'helpModal';
 
 export type Hotkey = {
   /**
@@ -21,14 +22,25 @@ export type Hotkey = {
   keys: string[];
   /** Срабатывает ли, когда фокус стоит в поле ввода. По умолчанию — нет. */
   worksInInput?: boolean;
-  /** Строка для таблицы хоткеев в README и CLAUDE.md. */
+  /** Строка для справки по F1 и таблицы хоткеев в README. */
   description: string;
+  /**
+   * Как клавиша подписана в справке, если перечислять все `keys` неудобно —
+   * например, шесть цифр для кубиков. По умолчанию — все клавиши через «/».
+   */
+  label?: string;
+  /**
+   * В каком блоке справки показывать клавишу. По умолчанию — в общем списке;
+   * `layers` — рядом с клавишами поля ввода имени локации.
+   */
+  helpSection?: 'layers';
 };
 
 export const HOTKEYS: Record<HotkeyId, Hotkey> = {
   layerModal: {
     keys: ['pagedown'],
     worksInInput: true,
+    helpSection: 'layers',
     description: 'Список локаций',
   },
   backgroundMode: { keys: ['b', 'и'], description: 'Режим загрузки фона' },
@@ -37,10 +49,16 @@ export const HOTKEYS: Record<HotkeyId, Hotkey> = {
   eidos: { keys: ["'", 'э'], description: 'Эйдос' },
   brushModal: { keys: ['d', 'в'], description: 'Панель кисти' },
   cursorHalo: { keys: ['o', 'щ'], description: 'Вид ореола курсора' },
-  addDice: { keys: ['1', '2', '3', '4', '5', '6'], description: 'Добавить кубик' },
+  addDice: {
+    keys: ['1', '2', '3', '4', '5', '6'],
+    label: '1–6',
+    description: 'Добавить кубик (d4, d6, d8, d10, d12, d20)',
+  },
   rollDice: { keys: [' '], description: 'Перебросить все кубики' },
   healthUp: { keys: ['arrowup'], description: 'Здоровье активного токена +1' },
   healthDown: { keys: ['arrowdown'], description: 'Здоровье активного токена −1' },
+  // В поле ввода F1 ничего не печатает, так что справку можно открыть и там.
+  helpModal: { keys: ['f1'], worksInInput: true, description: 'Справка по горячим клавишам' },
 };
 
 export const DICE_BY_KEY: Record<string, DiceVariant> = {

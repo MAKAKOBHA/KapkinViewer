@@ -1,5 +1,9 @@
 .draggable-panel {
+  /* Отсчёт от угла явно: react-draggable двигает панель transform'ом, и без
+     top/left она встала бы туда, где её оставил поток, — под сценой. */
   position: absolute;
+  top: 0;
+  left: 0;
   padding: 8px 12px;
   background: rgba(20, 20, 20, 0.85);
   border: 1px solid #3a3a3a;

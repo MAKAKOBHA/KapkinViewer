@@ -2,6 +2,7 @@ import { FC } from 'react';
 import { DragAndDrop } from 'components/DragAndDrop';
 import { Dices } from 'components/Dice/Dices';
 import { CursorHalo } from 'components/CursorHalo';
+import { HelpModal } from 'components/HelpModal';
 import { DrawProvider, LayerProvider } from 'components/providers';
 
 export const App: FC = () => {
@@ -13,6 +14,7 @@ export const App: FC = () => {
           <Dices />
         </DrawProvider>
         <CursorHalo initialVariant="calm" />
+        <HelpModal />
       </LayerProvider>
     </div>
   );
