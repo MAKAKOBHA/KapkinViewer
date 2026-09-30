@@ -30,6 +30,8 @@ export type SceneViewport = {
   world: World;
   worldRef: MutableRefObject<World>;
   setWorldAspect(aspect: number | null): void;
+  /** Подписка на зум и панораму: они идут мимо React, а знать о них нужно. */
+  subscribeViewport(listener: () => void): () => void;
 };
 
 /**
@@ -53,6 +55,7 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
   // почти не могут, но писать всё равно можно только в загруженную локацию.
   const hydratedIdRef = useRef<string | null>(null);
   const saveTimeoutRef = useRef<number | undefined>(undefined);
+  const listenersRef = useRef(new Set<() => void>());
 
   const apply = useCallback(
     (viewport: Viewport) => {
@@ -66,6 +69,9 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
       root.style.setProperty('--scene-scale', `${viewport.scale}`);
       root.style.setProperty('--scene-x', `${viewport.x}px`);
       root.style.setProperty('--scene-y', `${viewport.y}px`);
+
+      // Холст рисования трансформ не читает — он перерисовывает штрихи сам.
+      listenersRef.current.forEach((listener) => listener());
     },
     [rootRef],
   );
@@ -89,6 +95,14 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
     (aspect: number | null) => applyWorld(aspect ?? DEFAULT_WORLD_ASPECT),
     [applyWorld],
   );
+
+  const subscribeViewport = useCallback((listener: () => void) => {
+    listenersRef.current.add(listener);
+
+    return () => {
+      listenersRef.current.delete(listener);
+    };
+  }, []);
 
   const save = useCallback(() => {
     window.clearTimeout(saveTimeoutRef.current);
@@ -199,5 +213,5 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
 
   useEffect(() => () => window.clearTimeout(saveTimeoutRef.current), []);
 
-  return { viewportRef, world, worldRef, setWorldAspect };
+  return { viewportRef, world, worldRef, setWorldAspect, subscribeViewport };
 };

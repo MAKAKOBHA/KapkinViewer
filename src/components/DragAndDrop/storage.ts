@@ -1,3 +1,4 @@
+import { Drawing, DRAWING_VERSION, isStroke } from 'components/Canvas/lib/render-drawing';
 import { DropzoneFile, StoredBackground } from './types';
 import { isValidAspect, isViewport, Viewport } from './viewport';
 
@@ -31,7 +32,7 @@ const openDatabase = (): Promise<IDBDatabase> => {
   return dbPromise;
 };
 
-export const putImageBlob = async (key: string, blob: Blob): Promise<void> => {
+const writeValue = async (key: string, value: unknown): Promise<void> => {
   const db = await openDatabase();
 
   await new Promise<void>((resolve, reject) => {
@@ -41,22 +42,26 @@ export const putImageBlob = async (key: string, blob: Blob): Promise<void> => {
     transaction.oncomplete = () => resolve();
     transaction.onerror = () => reject(transaction.error);
 
-    store.put(blob, key);
+    store.put(value, key);
   });
 };
 
-export const getImageBlob = async (key: string): Promise<Blob | null> => {
+const readValue = async <T>(key: string): Promise<T | null> => {
   const db = await openDatabase();
 
-  return new Promise<Blob | null>((resolve, reject) => {
+  return new Promise<T | null>((resolve, reject) => {
     const transaction = db.transaction(IDB_STORE_NAME, 'readonly');
     const store = transaction.objectStore(IDB_STORE_NAME);
     const request = store.get(key);
 
-    request.onsuccess = () => resolve((request.result as Blob) ?? null);
+    request.onsuccess = () => resolve((request.result as T) ?? null);
     request.onerror = () => reject(request.error);
   });
 };
+
+export const putImageBlob = (key: string, blob: Blob): Promise<void> => writeValue(key, blob);
+
+export const getImageBlob = (key: string): Promise<Blob | null> => readValue<Blob>(key);
 
 export const deleteImageBlob = async (key: string): Promise<void> => {
   const db = await openDatabase();
@@ -155,6 +160,29 @@ export const loadViewportFromLocalStorage = (layerId: string): Viewport | null =
   }
 };
 
+/**
+ * Рисунок локации — список штрихов. Лежит в том же хранилище, что и картинки:
+ * заводить второе ради одной записи незачем, а в localStorage длинные штрихи
+ * не влезут.
+ */
+export const getDrawingKey = (layerId: string) => `${layerId}-strokes`;
+
+export const saveDrawing = (drawing: Drawing, layerId: string): Promise<void> =>
+  writeValue(getDrawingKey(layerId), drawing);
+
+export const loadDrawing = async (layerId: string): Promise<Drawing | null> => {
+  const stored = await readValue<Partial<Drawing>>(getDrawingKey(layerId));
+  if (!stored || !Array.isArray(stored.strokes)) return null;
+
+  // Битый штрих роняет всю отрисовку — такие просто выбрасываем.
+  return { version: DRAWING_VERSION, strokes: stored.strokes.filter(isStroke) };
+};
+
+/**
+ * Рисунок локации в старом виде — снимок холста картинкой. Новых таких не
+ * появляется: рисунок хранится штрихами. Но у мастера такие снимки остались, и
+ * они ложатся под штрихи, пока он не очистит холст.
+ */
 export const getCanvasBlobKey = (layerId: string) => `${layerId}-canvas`;
 
 /**
@@ -174,5 +202,6 @@ export const deleteLayerDataFromStorage = async (layerId: string): Promise<void>
     ...savedFiles.map(({ id }) => deleteImageBlob(id)),
     ...(savedBackground ? [deleteImageBlob(savedBackground.id)] : []),
     deleteImageBlob(getCanvasBlobKey(layerId)),
+    deleteImageBlob(getDrawingKey(layerId)),
   ]);
 };

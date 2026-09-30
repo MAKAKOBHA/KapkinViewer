@@ -3,11 +3,9 @@ import { MutableRefObject } from 'react';
 export const clearCanvas = ({
   canvasRef,
   isDrawingRef,
-  lastPointRef,
 }: {
   canvasRef: MutableRefObject<HTMLCanvasElement | null>;
   isDrawingRef: MutableRefObject<boolean>;
-  lastPointRef: MutableRefObject<{ x: number; y: number } | null>;
 }) => {
   const canvas = canvasRef.current;
   if (!canvas) return;
@@ -22,5 +20,4 @@ export const clearCanvas = ({
   ctx.restore();
 
   isDrawingRef.current = false;
-  lastPointRef.current = null;
 };

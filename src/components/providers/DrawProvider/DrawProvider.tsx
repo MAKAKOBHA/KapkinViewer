@@ -9,6 +9,7 @@ import {
   useState,
 } from 'react';
 import { clearCanvas } from 'components/Canvas';
+import { Stroke } from 'components/Canvas/lib/render-drawing';
 import { BrushColor, BrushTool, DrawContext as DrawContextType } from './types';
 
 const DrawContext = createContext<DrawContextType | null>(null);
@@ -26,7 +27,9 @@ export const useDrawContext = () => {
 export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDrawingRef = useRef(false);
-  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const strokesRef = useRef<Stroke[]>([]);
+  const legacyDrawingRef = useRef<HTMLImageElement | null>(null);
+  const [drawingVersion, setDrawingVersion] = useState(0);
   const [activeTool, setActiveTool] = useState<BrushTool>(null);
   const [brushSize, setBrushSize] = useState(20);
   const [brushOpacity, setBrushOpacity] = useState(100);
@@ -37,16 +40,23 @@ export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
     setActiveTool((current) => (current === tool ? null : tool));
   }, []);
 
-  const handleClearCanvas = useCallback(
-    () => clearCanvas({ canvasRef, isDrawingRef, lastPointRef }),
-    [],
-  );
+  const bumpDrawing = useCallback(() => setDrawingVersion((version) => version + 1), []);
+
+  const handleClearCanvas = useCallback(() => {
+    strokesRef.current = [];
+    legacyDrawingRef.current = null;
+    clearCanvas({ canvasRef, isDrawingRef });
+    bumpDrawing();
+  }, [bumpDrawing]);
 
   const contextValue = useMemo(
     () => ({
       canvasRef,
       isDrawingRef,
-      lastPointRef,
+      strokesRef,
+      legacyDrawingRef,
+      drawingVersion,
+      bumpDrawing,
       activeTool,
       setActiveTool,
       brushSize,
@@ -62,6 +72,8 @@ export const DrawProvider: FC<PropsWithChildren> = ({ children }) => {
     }),
     [
       activeTool,
+      bumpDrawing,
+      drawingVersion,
       brushSize,
       brushOpacity,
       brushColor,

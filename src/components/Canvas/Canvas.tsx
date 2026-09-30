@@ -1,16 +1,31 @@
 import { useDrawContext } from 'components/providers';
-import { FC, MutableRefObject, useCallback, useLayoutEffect } from 'react';
-import { Viewport, World } from 'components/DragAndDrop/viewport';
+import { FC, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { getScreenSize, screenToWorld, toFraction } from 'components/DragAndDrop/viewport';
+import { SceneViewport } from 'components/DragAndDrop/hooks/useSceneViewport';
 import './Canvas.scss';
 import { useSyncCanvas } from './lib/use-sync-canvas';
+import { renderDrawing, Stroke } from './lib/render-drawing';
+import { useFrameSchedule } from './lib/use-frame-schedule';
 
 /**
- * Холст едет и масштабируется вместе с картой, поэтому ему нужен зум сцены:
- * пометка кистью принадлежит месту на карте, а не месту на экране.
+ * Насколько должна уехать мышь, чтобы в штрих легла новая точка, — в долях
+ * ширины карты. Делится на приближение: разглядывая комнату, мастер ведёт кистью
+ * тоньше, и ломаная не должна огрубляться.
  */
-type Props = { viewportRef: MutableRefObject<Viewport>; world: World };
+const MIN_POINT_DISTANCE = 0.001;
 
-export const Canvas: FC<Props> = ({ viewportRef, world }) => {
+type Props = { scene: SceneViewport };
+
+/**
+ * Рисунок поверх сцены.
+ *
+ * Холст растянут на экран и сам не масштабируется — карту к нему приводит
+ * трансформация контекста при отрисовке. Поэтому штрихи едут и растут вместе с
+ * картой, но остаются чёткими на любом приближении: каждый кадр они рисуются
+ * заново из точек, а не растягиваются картинкой.
+ */
+export const Canvas: FC<Props> = ({ scene }) => {
+  const { viewportRef, world, subscribeViewport } = scene;
   const {
     isBrushModalOpen,
     activeTool,
@@ -19,124 +34,130 @@ export const Canvas: FC<Props> = ({ viewportRef, world }) => {
     brushOpacity,
     canvasRef,
     isDrawingRef,
-    lastPointRef,
+    strokesRef,
+    legacyDrawingRef,
+    drawingVersion,
+    bumpDrawing,
   } = useDrawContext();
 
-  const { saveCanvas } = useSyncCanvas();
+  useSyncCanvas();
   const isCanvasEnabled = Boolean(activeTool && isBrushModalOpen);
+  const currentStrokeRef = useRef<Stroke | null>(null);
 
-  const getCanvasPoint = useCallback(
-    (event: MouseEvent | React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-      // rect уже посчитан с зумом сцены, а рисуем мы в координатах холста —
-      // отсюда деление на масштаб.
-      const rect = canvas.getBoundingClientRect();
-      const { scale } = viewportRef.current;
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
 
-      return {
-        x: (event.clientX - rect.left) / scale,
-        y: (event.clientY - rect.top) / scale,
-      };
-    },
-    [canvasRef, viewportRef],
-  );
+    const { current } = currentStrokeRef;
 
-  const drawLine = useCallback(
-    (from: { x: number; y: number }, to: { x: number; y: number }) => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    renderDrawing({
+      ctx,
+      strokes: current ? [...strokesRef.current, current] : strokesRef.current,
+      legacy: legacyDrawingRef.current,
+      viewport: viewportRef.current,
+      world,
+      pixelRatio: window.devicePixelRatio || 1,
+    });
+  }, [canvasRef, legacyDrawingRef, strokesRef, viewportRef, world]);
 
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.lineWidth = brushSize;
+  const scheduleRedraw = useFrameSchedule(redraw);
 
-      if (activeTool === 'eraser') {
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.strokeStyle = 'rgba(0,0,0,1)';
-        ctx.globalAlpha = 1;
-      } else {
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.strokeStyle = brushColor;
-        ctx.globalAlpha = brushOpacity / 100;
-      }
-
-      ctx.beginPath();
-      ctx.moveTo(from.x, from.y);
-      ctx.lineTo(to.x, to.y);
-      ctx.stroke();
-    },
-    [activeTool, brushColor, brushSize, brushOpacity, canvasRef],
+  const getPoint = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) =>
+      toFraction(screenToWorld({ x: event.clientX, y: event.clientY }, viewportRef.current), world),
+    [viewportRef, world],
   );
 
   const startDrawing = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
       // Shift + ЛКМ возит сцену — даже когда кисть в руках.
-      if (!isCanvasEnabled || event.shiftKey) return;
+      if (!isCanvasEnabled || event.shiftKey || !activeTool) return;
       event.preventDefault();
-      const point = getCanvasPoint(event);
-      if (!point) return;
+
       isDrawingRef.current = true;
-      lastPointRef.current = point;
+      currentStrokeRef.current = {
+        tool: activeTool,
+        color: brushColor,
+        // Толщина тоже в долях карты: кисть растёт вместе с ней.
+        size: brushSize / world.width,
+        opacity: brushOpacity,
+        points: [getPoint(event)],
+      };
+      scheduleRedraw();
     },
-    [getCanvasPoint, isCanvasEnabled, isDrawingRef, lastPointRef],
+    [
+      activeTool,
+      brushColor,
+      brushOpacity,
+      brushSize,
+      getPoint,
+      isCanvasEnabled,
+      isDrawingRef,
+      scheduleRedraw,
+      world.width,
+    ],
   );
 
   const drawMove = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!isDrawingRef.current) return;
-      const point = getCanvasPoint(event);
-      if (!point || !lastPointRef.current) return;
-      drawLine(lastPointRef.current, point);
-      lastPointRef.current = point;
+      const stroke = currentStrokeRef.current;
+      if (!isDrawingRef.current || !stroke) return;
+
+      const point = getPoint(event);
+      const last = stroke.points[stroke.points.length - 1];
+      const minDistance = MIN_POINT_DISTANCE / viewportRef.current.scale;
+
+      if (last && Math.hypot(point.x - last.x, point.y - last.y) < minDistance) return;
+
+      stroke.points.push(point);
+      scheduleRedraw();
     },
-    [drawLine, getCanvasPoint, isDrawingRef, lastPointRef],
+    [getPoint, isDrawingRef, scheduleRedraw, viewportRef],
   );
 
   const stopDrawing = useCallback(() => {
+    const stroke = currentStrokeRef.current;
+
     isDrawingRef.current = false;
-    lastPointRef.current = null;
-    saveCanvas();
-  }, [saveCanvas, isDrawingRef, lastPointRef]);
+    currentStrokeRef.current = null;
+
+    if (!stroke) return;
+
+    strokesRef.current = [...strokesRef.current, stroke];
+    // Отсюда же рисунок уходит в хранилище: за версией следит useSyncCanvas.
+    bumpDrawing();
+  }, [bumpDrawing, isDrawingRef, strokesRef]);
 
   /**
-   * Холст — это карта, поэтому его битмап меряется картой, а не окном. Размер
-   * выставляется в layout-эффекте: он гарантированно отрабатывает раньше
-   * гидрации из useSyncCanvas, иначе загруженный рисунок стёрся бы сразу после
-   * появления — присвоение canvas.width очищает битмап.
+   * Битмап меряется экраном, а не картой: холст экранный. Эффект вешается на
+   * размер мира, потому что тот пересчитывается ровно тогда же, когда меняется
+   * окно.
    */
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ratio = window.devicePixelRatio || 1;
-    const nextWidth = Math.round(world.width * ratio);
-    const nextHeight = Math.round(world.height * ratio);
-    if (canvas.width === nextWidth && canvas.height === nextHeight) return;
+    const screen = getScreenSize();
+    const nextWidth = Math.round(screen.width * ratio);
+    const nextHeight = Math.round(screen.height * ratio);
 
-    const ctx = canvas.getContext('2d');
-    // Карта поменяла размер на экране — вместе с ней тянется и рисунок, иначе
-    // на мониторе другого разрешения пометки разъехались бы с картой.
-    const snapshot = document.createElement('canvas');
-    const hasSnapshot = canvas.width > 0 && canvas.height > 0;
-
-    if (hasSnapshot) {
-      snapshot.width = canvas.width;
-      snapshot.height = canvas.height;
-      snapshot.getContext('2d')?.drawImage(canvas, 0, 0);
+    if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+      canvas.width = nextWidth;
+      canvas.height = nextHeight;
     }
 
-    canvas.width = nextWidth;
-    canvas.height = nextHeight;
+    // Присвоение размера обнуляет битмап, но терять нечего: рисунок собирается
+    // из штрихов заново.
+    redraw();
+  }, [canvasRef, redraw, world]);
 
-    if (!ctx) return;
-    if (hasSnapshot) {
-      ctx.drawImage(snapshot, 0, 0, nextWidth, nextHeight);
-    }
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-  }, [canvasRef, world]);
+  useEffect(() => subscribeViewport(scheduleRedraw), [scheduleRedraw, subscribeViewport]);
+
+  useEffect(() => {
+    scheduleRedraw();
+  }, [drawingVersion, scheduleRedraw]);
 
   return (
     <canvas

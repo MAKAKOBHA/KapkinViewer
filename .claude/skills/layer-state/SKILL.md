@@ -21,7 +21,8 @@ description: Добавление или изменение данных, при
 | Список локаций | localStorage | `LayersList` |
 | Активная локация | localStorage | `ActiveLayer` |
 | Блобы картинок | IndexedDB `kapkin-viewer` / `images` | id файла |
-| Рисунок канваса | IndexedDB, там же | `getCanvasBlobKey(layerId)` |
+| Рисунок (штрихи) | IndexedDB, там же | `getDrawingKey(layerId)` |
+| Рисунок из старых версий (снимок) | IndexedDB, там же | `getCanvasBlobKey(layerId)` |
 
 Правило: в localStorage — только то, что переживёт `JSON.stringify`. Картинки,
 рисунок и вообще любые бинарные данные — блобами в IndexedDB, а в localStorage

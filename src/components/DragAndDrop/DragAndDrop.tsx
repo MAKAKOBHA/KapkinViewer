@@ -15,7 +15,8 @@ import { toPixels } from './viewport';
 
 export const DragAndDrop: React.FC = () => {
   const rootRef = useRef<HTMLDivElement>(null);
-  const { viewportRef, world, worldRef, setWorldAspect } = useSceneViewport(rootRef);
+  const scene = useSceneViewport(rootRef);
+  const { viewportRef, world, worldRef, setWorldAspect } = scene;
 
   const {
     files,
@@ -109,18 +110,18 @@ export const DragAndDrop: React.FC = () => {
       {isBrushModalOpen && <BrushModal />}
       {isLayerModalOpen && <LayerModal />}
       {/*
-        Сцена разрезана на две обёртки, потому что между картой и токенами стоит
-        сетка, а она ни масштабироваться, ни ужиматься до карты не должна. Обе
-        обёртки берут трансформ из одних и тех же CSS-переменных, так что
-        разъехаться не могут.
+        Сцена разрезана на две обёртки, потому что между картой и токенами стоят
+        рисунок и сетка. Обе обёртки берут трансформ из одних и тех же
+        CSS-переменных, так что разъехаться не могут.
       */}
       <div className="scene-layer scene-layer--below" style={worldStyle}>
         {background.image && (
           <img src={background.image} alt="Background" className="background-image" />
         )}
         {files.filter((file) => file.imageType !== 'normal').map(renderImage)}
-        <Canvas viewportRef={viewportRef} world={world} />
       </div>
+      {/* Холст экранный: карту к нему приводит трансформация при отрисовке. */}
+      <Canvas scene={scene} />
       {isGridEnabled && <Grid src={GridImg} onMouseDown={(e) => e.preventDefault()} />}
       <div className="scene-layer scene-layer--above" style={worldStyle}>
         {files.filter((file) => file.imageType === 'normal').map(renderImage)}
