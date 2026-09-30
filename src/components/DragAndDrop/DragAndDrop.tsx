@@ -11,10 +11,11 @@ import './DragAndDrop.scss';
 import { BrushModal } from '../BrushModal';
 import { Canvas } from '../Canvas';
 import { DropzoneFile } from './types';
+import { toPixels } from './viewport';
 
 export const DragAndDrop: React.FC = () => {
   const rootRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useSceneViewport(rootRef);
+  const { viewportRef, world, worldRef, setWorldAspect } = useSceneViewport(rootRef);
 
   const {
     files,
@@ -29,7 +30,7 @@ export const DragAndDrop: React.FC = () => {
     duplicateImage,
     isGridEnabled,
     isEidosEnabled,
-  } = useFileController(viewportRef);
+  } = useFileController({ viewportRef, worldRef, setWorldAspect });
   const { isBrushModalOpen } = useDrawContext();
   const { isLayerModalOpen } = useLayerContext();
 
@@ -38,10 +39,15 @@ export const DragAndDrop: React.FC = () => {
     setFiles,
     setActiveFileId,
     viewportRef,
+    worldRef,
   });
 
+  // Сцена хранится в долях ширины карты — в пиксели они превращаются здесь, и
+  // только здесь.
   const renderImage = (file: DropzoneFile) => {
     const isNormalImage = file.imageType === 'normal';
+    const position = toPixels(file.position, world);
+    const size = toPixels({ x: file.dimensions.width, y: file.dimensions.height }, world);
 
     return (
       <ImageContainer
@@ -52,8 +58,8 @@ export const DragAndDrop: React.FC = () => {
         onMouseDown={(e) => onMouseDown(e, file.id)}
         onContextMenu={(e) => deleteImage(e, file.id)}
         onAuxClick={(e) => duplicateImage(e, file.id)}
-        $top={file.position.y}
-        $left={file.position.x}
+        $top={position.y}
+        $left={position.x}
         $isNormalImage={isNormalImage}
         $health={file.health}
         aria-label={`Draggable image: ${file.name}`}
@@ -76,16 +82,14 @@ export const DragAndDrop: React.FC = () => {
           src={file.preview}
           alt={file.name}
           data-image-id={file.id}
-          style={{
-            width: isNormalImage ? file.dimensions.width : 'auto',
-            height: isNormalImage ? file.dimensions.height : 'auto',
-            maxWidth: '100vw',
-            maxHeight: '100vh',
-          }}
+          style={{ width: size.x, height: size.y }}
         />
       </ImageContainer>
     );
   };
+
+  // Обёртки — это и есть карта: её пропорции задаёт фон, а размер — окно.
+  const worldStyle = { width: world.width, height: world.height };
 
   return (
     <div className="drag-and-drop-root" ref={rootRef}>
@@ -106,18 +110,19 @@ export const DragAndDrop: React.FC = () => {
       {isLayerModalOpen && <LayerModal />}
       {/*
         Сцена разрезана на две обёртки, потому что между картой и токенами стоит
-        сетка, а она масштабироваться не должна. Обе обёртки берут трансформ из
-        одних и тех же CSS-переменных, так что разъехаться не могут.
+        сетка, а она ни масштабироваться, ни ужиматься до карты не должна. Обе
+        обёртки берут трансформ из одних и тех же CSS-переменных, так что
+        разъехаться не могут.
       */}
-      <div className="scene-layer scene-layer--below">
+      <div className="scene-layer scene-layer--below" style={worldStyle}>
         {background.image && (
           <img src={background.image} alt="Background" className="background-image" />
         )}
         {files.filter((file) => file.imageType !== 'normal').map(renderImage)}
-        <Canvas viewportRef={viewportRef} />
+        <Canvas viewportRef={viewportRef} world={world} />
       </div>
       {isGridEnabled && <Grid src={GridImg} onMouseDown={(e) => e.preventDefault()} />}
-      <div className="scene-layer scene-layer--above">
+      <div className="scene-layer scene-layer--above" style={worldStyle}>
         {files.filter((file) => file.imageType === 'normal').map(renderImage)}
       </div>
       {imageType !== 'normal' && <BackgroundBorder $isBackground={imageType === 'background'} />}

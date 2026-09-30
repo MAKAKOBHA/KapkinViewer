@@ -5,6 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
   useRef,
+  useState,
 } from 'react';
 import { useLayerContext } from 'components/providers';
 import { useHotkeys } from 'hooks/hotkeys';
@@ -12,28 +13,42 @@ import { loadViewportFromLocalStorage, saveViewportToLocalStorage } from '../sto
 import {
   clampViewport,
   DEFAULT_VIEWPORT,
-  getWorldSize,
+  DEFAULT_WORLD_ASPECT,
+  getScreenSize,
+  getWorldBox,
   panBy,
   Viewport,
+  World,
   zoomAt,
 } from '../viewport';
 
 const SAVE_DEBOUNCE_MS = 200;
 
+export type SceneViewport = {
+  viewportRef: MutableRefObject<Viewport>;
+  /** Прямоугольник карты в пикселях — по нему верстается сцена. */
+  world: World;
+  worldRef: MutableRefObject<World>;
+  setWorldAspect(aspect: number | null): void;
+};
+
 /**
- * Зум и панорама сцены: Shift + колесо приближает в точку курсора, Shift + ЛКМ
- * возит карту, `Z` возвращает её целиком.
+ * Зум, панорама и размер карты на экране.
  *
- * Значение лежит в ref и попадает прямо в CSS-переменные корня, а не в стейт:
+ * Зум лежит в ref и попадает прямо в CSS-переменные корня, а не в стейт:
  * колесо и перетаскивание сыплют событиями десятками в секунду, и React
  * перерисовывал бы на каждое из них всю сцену с токенами. Тот же приём, что у
- * ореола курсора.
+ * ореола курсора. А вот размер мира — стейт: он меняется редко (ресайз окна,
+ * новый фон), зато от него зависит вёрстка.
  */
-export const useSceneViewport = (
-  rootRef: RefObject<HTMLDivElement | null>,
-): MutableRefObject<Viewport> => {
+export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): SceneViewport => {
   const { activeId } = useLayerContext();
   const viewportRef = useRef<Viewport>(DEFAULT_VIEWPORT);
+  const [world, setWorld] = useState<World>(() =>
+    getWorldBox(DEFAULT_WORLD_ASPECT, getScreenSize()),
+  );
+  const worldRef = useRef<World>(world);
+  const aspectRef = useRef(DEFAULT_WORLD_ASPECT);
   // Локация, чей зум сейчас в ref. Гидрация синхронная, так что разъехаться они
   // почти не могут, но писать всё равно можно только в загруженную локацию.
   const hydratedIdRef = useRef<string | null>(null);
@@ -55,6 +70,26 @@ export const useSceneViewport = (
     [rootRef],
   );
 
+  /** Пересобирает карту под новые пропорции или новый размер окна. */
+  const applyWorld = useCallback(
+    (aspect: number) => {
+      const screen = getScreenSize();
+      const next = getWorldBox(aspect, screen);
+
+      aspectRef.current = aspect;
+      worldRef.current = next;
+      setWorld(next);
+      // Прежний сдвиг мог остаться за краем новой карты.
+      apply(clampViewport(viewportRef.current, next, screen));
+    },
+    [apply],
+  );
+
+  const setWorldAspect = useCallback(
+    (aspect: number | null) => applyWorld(aspect ?? DEFAULT_WORLD_ASPECT),
+    [applyWorld],
+  );
+
   const save = useCallback(() => {
     window.clearTimeout(saveTimeoutRef.current);
 
@@ -70,13 +105,13 @@ export const useSceneViewport = (
   useLayoutEffect(() => {
     const stored = loadViewportFromLocalStorage(activeId) ?? DEFAULT_VIEWPORT;
 
-    apply(clampViewport(stored, getWorldSize()));
+    apply(clampViewport(stored, worldRef.current, getScreenSize()));
     hydratedIdRef.current = activeId;
   }, [activeId, apply]);
 
   useHotkeys({
     resetViewport: () => {
-      apply(DEFAULT_VIEWPORT);
+      apply(clampViewport(DEFAULT_VIEWPORT, worldRef.current, getScreenSize()));
       save();
     },
   });
@@ -104,7 +139,8 @@ export const useSceneViewport = (
           viewportRef.current,
           { x: event.clientX, y: event.clientY },
           delta < 0 ? 'in' : 'out',
-          getWorldSize(),
+          worldRef.current,
+          getScreenSize(),
         ),
       );
       save();
@@ -123,7 +159,8 @@ export const useSceneViewport = (
           panBy(
             viewportRef.current,
             { x: move.clientX - last.x, y: move.clientY - last.y },
-            getWorldSize(),
+            worldRef.current,
+            getScreenSize(),
           ),
         );
         last = { x: move.clientX, y: move.clientY };
@@ -141,10 +178,11 @@ export const useSceneViewport = (
       document.addEventListener('mouseup', onMouseUp);
     };
 
-    // Размер окна задаёт размер мира: после ресайза прежний сдвиг может открыть
-    // пустоту за краем карты.
+    // Карта вписана в окно, поэтому её размер на экране зависит от размера окна.
+    // Доли, в которых хранится сцена, при этом не меняются — картинки остаются
+    // там же относительно карты.
     const onResize = () => {
-      apply(clampViewport(viewportRef.current, getWorldSize()));
+      applyWorld(aspectRef.current);
       save();
     };
 
@@ -157,9 +195,9 @@ export const useSceneViewport = (
       root.removeEventListener('mousedown', onMouseDown);
       window.removeEventListener('resize', onResize);
     };
-  }, [apply, rootRef, save]);
+  }, [apply, applyWorld, rootRef, save]);
 
   useEffect(() => () => window.clearTimeout(saveTimeoutRef.current), []);
 
-  return viewportRef;
+  return { viewportRef, world, worldRef, setWorldAspect };
 };

@@ -12,6 +12,9 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  // Карта вписана в окно целиком, поэтому по одной оси остаются поля. Пусть это
+  // будет мягкий сумрак вокруг стола, а не чёрные полосы.
+  background: radial-gradient(ellipse at center, #33333b 0%, #16161b 100%);
 
   // Зум и панорама сцены: значения пишет useSceneViewport, минуя React.
   --scene-scale: 1;
@@ -28,9 +31,12 @@
 
 // Слои, которые едут и масштабируются вместе с картой: фон, боевая карта,
 // рисунок кистью и токены. Сетка, кубики и панели остаются экранными.
+// Размер обёртки — это размер карты, его считает useSceneViewport и ставит
+// инлайном: пропорции приходят от фона, а масштаб вписывания — от окна.
 .scene-layer {
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
   transform: translate(var(--scene-x), var(--scene-y)) scale(var(--scene-scale));
   transform-origin: 0 0;
   will-change: transform;

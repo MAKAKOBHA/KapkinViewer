@@ -1,6 +1,6 @@
 import { useDrawContext } from 'components/providers';
 import { FC, MutableRefObject, useCallback, useLayoutEffect } from 'react';
-import { Viewport } from 'components/DragAndDrop/viewport';
+import { Viewport, World } from 'components/DragAndDrop/viewport';
 import './Canvas.scss';
 import { useSyncCanvas } from './lib/use-sync-canvas';
 
@@ -8,9 +8,9 @@ import { useSyncCanvas } from './lib/use-sync-canvas';
  * Холст едет и масштабируется вместе с картой, поэтому ему нужен зум сцены:
  * пометка кистью принадлежит месту на карте, а не месту на экране.
  */
-type Props = { viewportRef: MutableRefObject<Viewport> };
+type Props = { viewportRef: MutableRefObject<Viewport>; world: World };
 
-export const Canvas: FC<Props> = ({ viewportRef }) => {
+export const Canvas: FC<Props> = ({ viewportRef, world }) => {
   const {
     isBrushModalOpen,
     activeTool,
@@ -102,44 +102,41 @@ export const Canvas: FC<Props> = ({ viewportRef }) => {
   }, [saveCanvas, isDrawingRef, lastPointRef]);
 
   /**
-   * Размер выставляется в layout-эффекте: он гарантированно отрабатывает раньше
+   * Холст — это карта, поэтому его битмап меряется картой, а не окном. Размер
+   * выставляется в layout-эффекте: он гарантированно отрабатывает раньше
    * гидрации из useSyncCanvas, иначе загруженный рисунок стёрся бы сразу после
    * появления — присвоение canvas.width очищает битмап.
    */
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return undefined;
+    if (!canvas) return;
 
-    const resizeCanvas = () => {
-      const ratio = window.devicePixelRatio || 1;
-      const nextWidth = Math.round(window.innerWidth * ratio);
-      const nextHeight = Math.round(window.innerHeight * ratio);
-      if (canvas.width === nextWidth && canvas.height === nextHeight) return;
+    const ratio = window.devicePixelRatio || 1;
+    const nextWidth = Math.round(world.width * ratio);
+    const nextHeight = Math.round(world.height * ratio);
+    if (canvas.width === nextWidth && canvas.height === nextHeight) return;
 
-      const ctx = canvas.getContext('2d');
-      // Снимок в аппаратных пикселях: ресайз обнуляет битмап, рисунок мастера
-      // при этом терять нельзя.
-      const snapshot =
-        ctx && canvas.width > 0 && canvas.height > 0
-          ? ctx.getImageData(0, 0, canvas.width, canvas.height)
-          : null;
+    const ctx = canvas.getContext('2d');
+    // Карта поменяла размер на экране — вместе с ней тянется и рисунок, иначе
+    // на мониторе другого разрешения пометки разъехались бы с картой.
+    const snapshot = document.createElement('canvas');
+    const hasSnapshot = canvas.width > 0 && canvas.height > 0;
 
-      canvas.width = nextWidth;
-      canvas.height = nextHeight;
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
+    if (hasSnapshot) {
+      snapshot.width = canvas.width;
+      snapshot.height = canvas.height;
+      snapshot.getContext('2d')?.drawImage(canvas, 0, 0);
+    }
 
-      if (!ctx) return;
-      if (snapshot) {
-        ctx.putImageData(snapshot, 0, 0);
-      }
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    };
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-    return () => window.removeEventListener('resize', resizeCanvas);
-  }, [canvasRef]);
+    if (!ctx) return;
+    if (hasSnapshot) {
+      ctx.drawImage(snapshot, 0, 0, nextWidth, nextHeight);
+    }
+    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  }, [canvasRef, world]);
 
   return (
     <canvas

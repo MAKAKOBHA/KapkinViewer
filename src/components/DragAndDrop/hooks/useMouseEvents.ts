@@ -2,15 +2,19 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useRefs } from 'hooks/useRefs';
 import { UseMouseEvents } from '../types';
 import { updateImageDimensions } from '../helpers';
-import { clampToWorld, getWorldSize, screenToWorld } from '../viewport';
+import { clampToWorld, getWorldHeightInFractions, screenToWorld, toFraction } from '../viewport';
 
+/** Шаг колеса над картинкой — пиксели экрана: так он одинаков на любой карте. */
 const ZOOM_DELTA = 20;
+/** Мельче этого картинку не разглядеть — доля ширины карты. */
+const MIN_IMAGE_WIDTH = 0.015;
 
 export const useMouseEvents: UseMouseEvents = ({
   files,
   setFiles,
   setActiveFileId,
   viewportRef,
+  worldRef,
 }) => {
   const movingRef = useRef<{
     id: string;
@@ -28,9 +32,12 @@ export const useMouseEvents: UseMouseEvents = ({
       const moving = movingRef.current;
       if (!moving?.isMoving) return;
 
-      // Позиции токенов живут в координатах мира, мышь — в координатах экрана.
-      const point = screenToWorld({ x: e.clientX, y: e.clientY }, viewportRef.current);
-      const world = getWorldSize();
+      // Позиции токенов — доли ширины карты, мышь — пиксели экрана.
+      const world = worldRef.current;
+      const point = toFraction(
+        screenToWorld({ x: e.clientX, y: e.clientY }, viewportRef.current),
+        world,
+      );
 
       setFiles((prevFiles) =>
         prevFiles.map((file) => {
@@ -47,7 +54,7 @@ export const useMouseEvents: UseMouseEvents = ({
         }),
       );
     },
-    [setFiles, viewportRef],
+    [setFiles, viewportRef, worldRef],
   );
 
   const onMouseDown = useCallback(
@@ -62,14 +69,17 @@ export const useMouseEvents: UseMouseEvents = ({
       if (!img) return;
 
       setActiveFileId(id);
-      const point = screenToWorld({ x: e.clientX, y: e.clientY }, viewportRef.current);
+      const point = toFraction(
+        screenToWorld({ x: e.clientX, y: e.clientY }, viewportRef.current),
+        worldRef.current,
+      );
       const offsetX = point.x - img.position.x;
       const offsetY = point.y - img.position.y;
 
       movingRef.current = { id, isMoving: true, offsetX, offsetY };
       document.addEventListener('mousemove', onMouseMove);
     },
-    [files, onMouseMove, setActiveFileId, viewportRef],
+    [files, onMouseMove, setActiveFileId, viewportRef, worldRef],
   );
 
   const onMouseUp = () => {
@@ -86,24 +96,30 @@ export const useMouseEvents: UseMouseEvents = ({
       e.preventDefault();
       e.stopPropagation();
 
-      const delta = e.deltaY > 0 ? -ZOOM_DELTA : ZOOM_DELTA;
+      const world = worldRef.current;
+      // Шаг колеса — в пикселях экрана, а размер картинки — в долях карты.
+      const delta = (e.deltaY > 0 ? -ZOOM_DELTA : ZOOM_DELTA) / world.width;
       const target = files.find((f) => f.id === id);
 
       if (target) {
         const newWidth = target.dimensions.width + delta;
         const newHeight = newWidth * (target.dimensions.height / target.dimensions.width);
-        const world = getWorldSize();
 
-        if (newWidth > 20 && newWidth <= world.width && newHeight <= world.height) {
+        if (
+          newWidth > MIN_IMAGE_WIDTH &&
+          newWidth <= 1 &&
+          newHeight <= getWorldHeightInFractions(world)
+        ) {
           updateImageDimensions({
             id,
             dimensions: { height: newHeight, width: newWidth },
             setFunc: setFiles,
+            world,
           });
         }
       }
     },
-    [files, setFiles],
+    [files, setFiles, worldRef],
   );
 
   useEffect(() => {

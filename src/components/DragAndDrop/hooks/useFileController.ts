@@ -10,13 +10,13 @@ import { DropzoneState, useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
 import { useHotkeys } from 'hooks/hotkeys';
 import { Background, DropzoneFile, ImageType } from '../types';
-import { adjustImageSizeToViewport, adjustRenderedImageDimensions } from '../helpers';
+import { adjustImageSizeToWorld, clampFilesToWorld, measureImageAspect } from '../helpers';
 import { useKeyPress } from './useKeyPress';
 import { deleteImageBlob, getImageBlob, putImageBlob } from '../storage';
 import { DEFAULT_BACKGROUND } from '../constants/background';
 import { useSyncFilesWithStorage } from './useSyncFilesWithStorage';
 import { createPreviewUrl, revokePreviewUrl } from '../preview-urls';
-import { screenToWorld, Viewport } from '../viewport';
+import { getScreenSize, screenToWorld, toFraction, Viewport, World } from '../viewport';
 
 type MouseEventFunction = (e: React.MouseEvent<HTMLDivElement>, id: string) => void;
 
@@ -60,7 +60,17 @@ const getNewFilesWithHealth = (
   return newFiles;
 };
 
-export const useFileController = (viewportRef: MutableRefObject<Viewport>): FileControllerData => {
+type FileControllerParams = {
+  viewportRef: MutableRefObject<Viewport>;
+  worldRef: MutableRefObject<World>;
+  setWorldAspect(aspect: number | null): void;
+};
+
+export const useFileController = ({
+  viewportRef,
+  worldRef,
+  setWorldAspect,
+}: FileControllerParams): FileControllerData => {
   const [files, setFiles] = useState<DropzoneFile[]>([]);
   const [isDragVisible, setIsDragVisible] = useState(false);
   const [background, setBackground] = useState<Background>(DEFAULT_BACKGROUND);
@@ -83,8 +93,12 @@ export const useFileController = (viewportRef: MutableRefObject<Viewport>): File
             revokePreviewUrl(background.id);
             void deleteImageBlob(background.id);
           }
-          setBackground({ id: newId, image: preview }); // Устанавливаем фоновое изображение
-          setImageType('normal');
+          // Пропорции фона — это пропорции всей карты, поэтому фон появляется
+          // на сцене только после того, как они измерены.
+          void measureImageAspect(preview).then((aspect) => {
+            setBackground({ id: newId, image: preview, aspect });
+            setImageType('normal');
+          });
         }
       } else {
         // Обычный режим добавления изображений
@@ -98,25 +112,26 @@ export const useFileController = (viewportRef: MutableRefObject<Viewport>): File
 
             img.onload = () => {
               const isBattleImage = imageType === 'battle';
-              const originalWidth = img.naturalWidth;
-              const originalHeight = img.naturalHeight;
-              const adjustedImage = adjustImageSizeToViewport(
-                originalWidth,
-                originalHeight,
+              const viewport = viewportRef.current;
+              const world = worldRef.current;
+              const adjustedImage = adjustImageSizeToWorld(
+                img.naturalWidth,
+                img.naturalHeight,
                 isBattleImage,
+                world,
               );
 
               // Картинка должна лечь туда, куда мастер смотрит, и выглядеть на
               // экране одинаково при любом приближении — поэтому и центр, и
               // размер считаются от видимой области, а не от всей карты.
-              const viewport = viewportRef.current;
               const dimensions = {
                 width: adjustedImage.width / viewport.scale,
                 height: adjustedImage.height / viewport.scale,
               };
-              const center = screenToWorld(
-                { x: window.innerWidth / 2, y: window.innerHeight / 2 },
-                viewport,
+              const screen = getScreenSize();
+              const center = toFraction(
+                screenToWorld({ x: screen.width / 2, y: screen.height / 2 }, viewport),
+                world,
               );
 
               resolve({
@@ -152,7 +167,7 @@ export const useFileController = (viewportRef: MutableRefObject<Viewport>): File
         });
       }
     },
-    [background.id, imageType, setImageType, viewportRef],
+    [background.id, imageType, setImageType, viewportRef, worldRef],
   );
 
   const { getRootProps, getInputProps } = useDropzone({
@@ -198,20 +213,25 @@ export const useFileController = (viewportRef: MutableRefObject<Viewport>): File
     }
   };
 
+  // Пропорции карты задаёт фон: сменился фон — сменился и мир, а картинки,
+  // лежавшие у прежнего края, надо вернуть в новые границы. Размер окна тут ни
+  // при чём: сцена хранится в долях.
   useEffect(() => {
-    const handleResize = () => adjustRenderedImageDimensions({ setFunc: setFiles });
+    setWorldAspect(background.aspect);
+    clampFilesToWorld({ setFunc: setFiles, world: worldRef.current });
+  }, [background.aspect, setWorldAspect, worldRef]);
+
+  useEffect(() => {
     const handleDragOver = (e: DragEvent) => {
       e.preventDefault();
       setIsDragVisible(true);
     };
     const handleDragEnd = () => setIsDragVisible(false);
 
-    window.addEventListener('resize', handleResize);
     document.addEventListener('dragover', handleDragOver);
     document.addEventListener('drop', handleDragEnd);
 
     return () => {
-      window.removeEventListener('resize', handleResize);
       document.removeEventListener('dragover', handleDragOver);
       document.removeEventListener('drop', handleDragEnd);
     };

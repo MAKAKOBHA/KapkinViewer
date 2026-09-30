@@ -1,9 +1,15 @@
 import { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import { useRefsData } from 'hooks/useRefs';
-import { Viewport } from './viewport';
+import { Viewport, World } from './viewport';
 
 export type ImageType = 'background' | 'battle' | 'normal';
 
+/**
+ * Картинка на сцене. `position` и `dimensions` — **доли ширины мира**, обе оси
+ * меряются одной и той же шириной (см. `viewport.ts`). В пикселях они
+ * превращаются только при отрисовке, поэтому сцена переживает и смену
+ * разрешения, и переезд на монитор с другими пропорциями.
+ */
 export type DropzoneFile = {
   id: string;
   preview: string;
@@ -17,13 +23,19 @@ export type DropzoneFile = {
 export type Background = {
   id: string | null;
   image: string | null;
+  /** Пропорции карты: из них собирается мир. null — ещё не измерены. */
+  aspect: number | null;
 };
+
+/** Что о фоне лежит в localStorage. */
+export type StoredBackground = { id: string; aspect: number | null };
 
 type UseMouseEventsParams = {
   files: DropzoneFile[];
   setFiles: Dispatch<SetStateAction<DropzoneFile[]>>;
   setActiveFileId: Dispatch<SetStateAction<string>>;
   viewportRef: MutableRefObject<Viewport>;
+  worldRef: MutableRefObject<World>;
 };
 
 export type UseMouseEventsData = {

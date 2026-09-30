@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   deleteImageBlob,
   deleteLayerDataFromStorage,
+  FILES_VERSION,
   getCanvasBlobKey,
   getImageBlob,
   loadBackgroundFromLocalStorage,
@@ -18,8 +19,8 @@ const makeFile = (id: string): DropzoneFile => ({
   id,
   preview: 'blob:preview',
   name: `${id}.png`,
-  position: { x: 10, y: 20 },
-  dimensions: { width: 100, height: 50 },
+  position: { x: 0.1, y: 0.2 },
+  dimensions: { width: 0.2, height: 0.1 },
   imageType: 'normal',
 });
 
@@ -32,31 +33,66 @@ describe('файлы локации', () => {
     saveFilesToLocalStorage([makeFile('a')], 'tavern');
     saveFilesToLocalStorage([makeFile('b'), makeFile('c')], 'dungeon');
 
-    expect(loadFilesFromLocalStorage('tavern').map((f) => f.id)).toEqual(['a']);
-    expect(loadFilesFromLocalStorage('dungeon').map((f) => f.id)).toEqual(['b', 'c']);
+    expect(loadFilesFromLocalStorage('tavern').files.map((f) => f.id)).toEqual(['a']);
+    expect(loadFilesFromLocalStorage('dungeon').files.map((f) => f.id)).toEqual(['b', 'c']);
   });
 
   it('возвращает пустой список для незнакомой локации', () => {
-    expect(loadFilesFromLocalStorage('unknown')).toEqual([]);
+    expect(loadFilesFromLocalStorage('unknown').files).toEqual([]);
   });
 
   it('переживает испорченные данные', () => {
     localStorage.setItem('files-tavern', '{сломано');
-    expect(loadFilesFromLocalStorage('tavern')).toEqual([]);
+    expect(loadFilesFromLocalStorage('tavern').files).toEqual([]);
+  });
+});
+
+describe('версии сцены', () => {
+  it('сохраняет сцену новой версии и читает её без перевода', () => {
+    saveFilesToLocalStorage([makeFile('a')], 'tavern');
+
+    expect(loadFilesFromLocalStorage('tavern').version).toBe(FILES_VERSION);
+  });
+
+  it('узнаёт сцену первой версии по голому массиву', () => {
+    localStorage.setItem('files-tavern', JSON.stringify([makeFile('a')]));
+
+    const stored = loadFilesFromLocalStorage('tavern');
+
+    expect(stored.version).toBe(1);
+    expect(stored.files.map((f) => f.id)).toEqual(['a']);
+  });
+
+  it('не принимает запись без списка файлов', () => {
+    localStorage.setItem('files-tavern', JSON.stringify({ version: 2 }));
+
+    expect(loadFilesFromLocalStorage('tavern').files).toEqual([]);
   });
 });
 
 describe('фон локации', () => {
-  it('хранит фон отдельно для каждой локации', () => {
-    saveBackgroundToLocalStorage('bg-tavern', 'tavern');
-    saveBackgroundToLocalStorage('bg-dungeon', 'dungeon');
+  it('хранит фон и пропорции карты отдельно для каждой локации', () => {
+    saveBackgroundToLocalStorage({ id: 'bg-tavern', aspect: 16 / 9 }, 'tavern');
+    saveBackgroundToLocalStorage({ id: 'bg-dungeon', aspect: 4 / 3 }, 'dungeon');
 
-    expect(loadBackgroundFromLocalStorage('tavern')).toBe('bg-tavern');
-    expect(loadBackgroundFromLocalStorage('dungeon')).toBe('bg-dungeon');
+    expect(loadBackgroundFromLocalStorage('tavern')).toEqual({ id: 'bg-tavern', aspect: 16 / 9 });
+    expect(loadBackgroundFromLocalStorage('dungeon')).toEqual({ id: 'bg-dungeon', aspect: 4 / 3 });
+  });
+
+  it('читает старый формат, где лежал один id', () => {
+    localStorage.setItem('background-tavern', JSON.stringify('bg-tavern'));
+
+    expect(loadBackgroundFromLocalStorage('tavern')).toEqual({ id: 'bg-tavern', aspect: null });
+  });
+
+  it('не доверяет негодным пропорциям', () => {
+    localStorage.setItem('background-tavern', JSON.stringify({ id: 'bg', aspect: 0 }));
+
+    expect(loadBackgroundFromLocalStorage('tavern')).toEqual({ id: 'bg', aspect: null });
   });
 
   it('сбрасывается при сохранении null', () => {
-    saveBackgroundToLocalStorage('bg-tavern', 'tavern');
+    saveBackgroundToLocalStorage({ id: 'bg-tavern', aspect: 1 }, 'tavern');
     saveBackgroundToLocalStorage(null, 'tavern');
 
     expect(loadBackgroundFromLocalStorage('tavern')).toBeNull();
@@ -114,7 +150,7 @@ describe('блобы картинок', () => {
 describe('удаление локации', () => {
   it('уносит метаданные, блобы файлов, фон и рисунок — и только своей локации', async () => {
     saveFilesToLocalStorage([makeFile('tavern-file')], 'tavern');
-    saveBackgroundToLocalStorage('tavern-bg', 'tavern');
+    saveBackgroundToLocalStorage({ id: 'tavern-bg', aspect: 16 / 9 }, 'tavern');
     saveViewportToLocalStorage({ scale: 4, x: -300, y: -200 }, 'tavern');
     await putImageBlob('tavern-file', new Blob(['f']));
     await putImageBlob('tavern-bg', new Blob(['b']));
@@ -135,7 +171,7 @@ describe('удаление локации', () => {
     expect(await getImageBlob(getCanvasBlobKey('tavern'))).toBeNull();
 
     // соседняя локация не пострадала
-    expect(loadFilesFromLocalStorage('dungeon').map((f) => f.id)).toEqual(['dungeon-file']);
+    expect(loadFilesFromLocalStorage('dungeon').files.map((f) => f.id)).toEqual(['dungeon-file']);
     expect(loadViewportFromLocalStorage('dungeon')).not.toBeNull();
     expect(await getImageBlob('dungeon-file')).not.toBeNull();
     expect(await getImageBlob(getCanvasBlobKey('dungeon'))).not.toBeNull();
