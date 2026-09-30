@@ -1,5 +1,17 @@
 import './Icon.scss';
-import { Accept, Brush, Cancel, Edit, Eraser, Opacity, Size, Trash } from './icons';
+import {
+  Accept,
+  Brush,
+  Cancel,
+  Edit,
+  Eraser,
+  Export,
+  Import,
+  ImportAdd,
+  Opacity,
+  Size,
+  Trash,
+} from './icons';
 
 const icons = {
   brush: Brush,
@@ -10,6 +22,9 @@ const icons = {
   edit: Edit,
   accept: Accept,
   cancel: Cancel,
+  export: Export,
+  import: Import,
+  'import-add': ImportAdd,
 } as const;
 
 export type IconName = keyof typeof icons;

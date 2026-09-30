@@ -5,6 +5,16 @@ export const INITIAL_LAYERS: LayerItem[] = [{ id: 'layer-1', name: 'Default' }];
 export const STORAGE_LAYERS_KEY = 'LayersList';
 export const STORAGE_ACTIVE_LAYER_KEY = 'ActiveLayer';
 
+/**
+ * Пишет список локаций мимо React. Нужно импорту игры: после него страница
+ * перезагружается, и стейту уже неоткуда попасть в хранилище — а если не
+ * перезагружать, автосохранение провайдера затрёт импортированный список.
+ */
+export const saveLayersToStorage = (layers: LayerItem[], activeId: string) => {
+  localStorage.setItem(STORAGE_LAYERS_KEY, JSON.stringify(layers));
+  localStorage.setItem(STORAGE_ACTIVE_LAYER_KEY, JSON.stringify(activeId));
+};
+
 const isLayerList = (value: unknown): value is LayerItem[] =>
   Array.isArray(value) &&
   value.every(

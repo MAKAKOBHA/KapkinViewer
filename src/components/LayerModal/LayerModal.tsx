@@ -6,6 +6,8 @@ import { deleteLayerDataFromStorage } from 'components/DragAndDrop';
 import { ConfirmationModal } from 'components/ui/modal';
 import { DraggablePanel } from 'components/ui/DraggablePanel';
 import { AddNewLayer } from './AddNewLayer';
+import { GameFileActions } from './GameFileActions';
+import { useGameFile } from './useGameFile';
 
 export const LayerModal: React.FC = () => {
   const { layers, setLayers, activeId, setActiveId, setIsInputActive } = useLayerContext();
@@ -14,6 +16,7 @@ export const LayerModal: React.FC = () => {
   const [editingValue, setEditingValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [layerToDelete, setLayerToDelete] = useState<LayerItem | null>(null);
+  const game = useGameFile();
 
   useEffect(() => {
     if (editingId || isAdding) {
@@ -66,6 +69,15 @@ export const LayerModal: React.FC = () => {
         isOpen={!!layerToDelete}
         onCancel={() => setLayerToDelete(null)}
         onConfirm={() => handleDelete(layerToDelete!.id)}
+      />
+      {/* Чистый импорт уносит всю кампанию, и отмены у него нет. */}
+      <ConfirmationModal
+        header="Загрузка игры"
+        description={`Загрузить «${game.replaceCandidate?.name}»? Текущие локации (${layers.length}) будут удалены.`}
+        confirmText="Загрузить"
+        isOpen={!!game.replaceCandidate}
+        onCancel={game.cancelReplace}
+        onConfirm={game.confirmReplace}
       />
       <DraggablePanel
         className="layer-modal"
@@ -145,6 +157,19 @@ export const LayerModal: React.FC = () => {
                         className="layer-modal__icon-button"
                         onClick={(event) => {
                           event.stopPropagation();
+                          void game.exportLayers([layer], layer.name);
+                        }}
+                        disabled={game.isBusy}
+                        title="Скачать локацию в файл"
+                        aria-label="Export layer"
+                      >
+                        <Icon icon="export" />
+                      </button>
+                      <button
+                        type="button"
+                        className="layer-modal__icon-button"
+                        onClick={(event) => {
+                          event.stopPropagation();
                           startEdit(layer);
                         }}
                         aria-label="Edit layer"
@@ -171,6 +196,7 @@ export const LayerModal: React.FC = () => {
           })}
           <AddNewLayer isAdding={isAdding} setIsAdding={setIsAdding} cancelEdit={cancelEdit} />
         </div>
+        <GameFileActions game={game} />
       </DraggablePanel>
     </>
   );

@@ -86,11 +86,18 @@ export const FILES_VERSION = 2;
 
 export type StoredFiles = { version: number; files: DropzoneFile[] };
 
+/**
+ * Пишет сцену вместе с её версией. Нужно импорту: в сохранённой игре сцена
+ * может оказаться первой версии, и объявить её пиксели долями — значит
+ * развалить расстановку. Перевод сделает гидрация, как и для сцен, которые
+ * лежат в хранилище с той поры.
+ */
+export const saveStoredFilesToLocalStorage = (stored: StoredFiles, layerId: string) => {
+  localStorage.setItem(`${LS_FILES_KEY}-${layerId}`, JSON.stringify(stored));
+};
+
 export const saveFilesToLocalStorage = (files: DropzoneFile[], layerId: string) => {
-  localStorage.setItem(
-    `${LS_FILES_KEY}-${layerId}`,
-    JSON.stringify({ version: FILES_VERSION, files }),
-  );
+  saveStoredFilesToLocalStorage({ version: FILES_VERSION, files }, layerId);
 };
 
 export const loadFilesFromLocalStorage = (layerId: string): StoredFiles => {

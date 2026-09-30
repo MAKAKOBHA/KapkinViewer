@@ -8,12 +8,7 @@ import {
   useState,
 } from 'react';
 import { LayerContextType } from './types';
-import {
-  getInitialActiveId,
-  getInitialLayers,
-  STORAGE_ACTIVE_LAYER_KEY,
-  STORAGE_LAYERS_KEY,
-} from './lib';
+import { getInitialActiveId, getInitialLayers, saveLayersToStorage } from './lib';
 
 const LayerContext = createContext<LayerContextType | null>(null);
 
@@ -24,8 +19,7 @@ export const LayerProvider: FC<PropsWithChildren> = ({ children }) => {
   const [isInputActive, setIsInputActive] = useState<boolean>(false);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_LAYERS_KEY, JSON.stringify(layers));
-    localStorage.setItem(STORAGE_ACTIVE_LAYER_KEY, JSON.stringify(activeId));
+    saveLayersToStorage(layers, activeId);
   }, [activeId, layers]);
 
   const contextValue = useMemo(
