@@ -5,18 +5,24 @@ import { LayerItem, removeLayer, useLayerContext } from 'components/providers';
 import { deleteLayerDataFromStorage } from 'components/DragAndDrop';
 import { ConfirmationModal } from 'components/ui/modal';
 import { DraggablePanel } from 'components/ui/DraggablePanel';
+import { useHotkeys } from 'hooks/hotkeys';
 import { AddNewLayer } from './AddNewLayer';
 import { GameFileActions } from './GameFileActions';
 import { useGameFile } from './useGameFile';
 
 export const LayerModal: React.FC = () => {
-  const { layers, setLayers, activeId, setActiveId, setIsInputActive } = useLayerContext();
+  const { layers, setLayers, activeId, setActiveId, setIsInputActive, setIsLayerModalOpen } =
+    useLayerContext();
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState('');
   const [isAdding, setIsAdding] = useState(false);
   const [layerToDelete, setLayerToDelete] = useState<LayerItem | null>(null);
   const game = useGameFile();
+
+  // Пока идёт правка имени, Esc принадлежит полю ввода: `worksInInput` не
+  // объявлен, поэтому хоткей молчит и панель остаётся открытой.
+  useHotkeys({ closeModal: () => setIsLayerModalOpen(false) });
 
   useEffect(() => {
     if (editingId || isAdding) {
@@ -73,11 +79,20 @@ export const LayerModal: React.FC = () => {
       {/* Чистый импорт уносит всю кампанию, и отмены у него нет. */}
       <ConfirmationModal
         header="Загрузка игры"
-        description={`Загрузить «${game.replaceCandidate?.name}»? Текущие локации (${layers.length}) будут удалены.`}
+        description={`Загрузить «${game.replaceCandidate?.name}»? Текущие локации (${layers.length}) будут удалены`}
         confirmText="Загрузить"
         isOpen={!!game.replaceCandidate}
         onCancel={game.cancelReplace}
         onConfirm={game.confirmReplace}
+      />
+      {/* Новый мир стирает всю кампанию целиком, и отмены у него тоже нет. */}
+      <ConfirmationModal
+        header="Новый мир"
+        description={`Начать с чистой локации? Текущие локации (${layers.length}) со всеми картинками, фонами и рисунками будут удалены`}
+        confirmText="Начать"
+        isOpen={game.isResetRequested}
+        onCancel={game.cancelReset}
+        onConfirm={game.confirmReset}
       />
       <DraggablePanel
         className="layer-modal"

@@ -9,3 +9,4 @@ export { Cancel } from './Cancel';
 export { Export } from './Export';
 export { Import } from './Import';
 export { ImportAdd } from './ImportAdd';
+export { NewGame } from './NewGame';

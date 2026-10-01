@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Drawing, Stroke } from 'components/Canvas/lib/render-drawing';
 import { unpackGame } from './game-file';
-import { buildSaveFileName, collectGame, importGame } from './game-save';
+import { buildSaveFileName, collectGame, importGame, resetGame } from './game-save';
 import {
   loadBackgroundFromLocalStorage,
   loadDrawing,
@@ -217,6 +217,31 @@ describe('чистый импорт', () => {
 
     // Данные импортированной локации записаны после удаления, а не до.
     expect(loadFilesFromLocalStorage(next.layers[0].id).files).toHaveLength(1);
+  });
+});
+
+describe('новый мир', () => {
+  it('оставляет одну пустую локацию и уносит данные прежних', async () => {
+    await seedLayer('tavern');
+    await seedLayer('dungeon');
+
+    const next = await resetGame([tavern, dungeon]);
+
+    expect(next.layers).toHaveLength(1);
+    expect(next.activeId).toBe(next.layers[0].id);
+    expect(loadFilesFromLocalStorage(next.layers[0].id).files).toEqual([]);
+
+    expect(localStorage.getItem('files-tavern')).toBeNull();
+    expect(localStorage.getItem('background-dungeon')).toBeNull();
+    expect(loadViewportFromLocalStorage('tavern')).toBeNull();
+  });
+
+  it('берёт локации свежий id, чтобы она не подняла остатки удалённой', async () => {
+    await seedLayer('tavern');
+
+    const next = await resetGame([tavern]);
+
+    expect(next.layers[0].id).not.toBe('tavern');
   });
 });
 

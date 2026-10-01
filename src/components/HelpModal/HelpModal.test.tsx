@@ -57,7 +57,8 @@ describe('HelpModal', () => {
     press('F1');
 
     expect(screen.getByText(hotkey.description)).toBeTruthy();
-    expect(screen.getByText(getHotkeyLabel(hotkey))).toBeTruthy();
+    // Не `getByText`: Esc подписывает и закрытие панели, и отмену ввода имени.
+    expect(screen.getAllByText(getHotkeyLabel(hotkey)).length).toBeGreaterThan(0);
   });
 });
 

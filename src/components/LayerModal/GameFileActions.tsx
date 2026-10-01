@@ -8,10 +8,13 @@ type Props = {
   game: UseGameFileData;
 };
 
-/** Выгрузка всей игры и две загрузки: начисто и добавлением к текущим локациям. */
+/**
+ * Выгрузка всей игры, две загрузки — начисто и добавлением к текущим локациям —
+ * и новый мир: то же, что чистая загрузка, только без файла.
+ */
 export const GameFileActions: FC<Props> = ({ game }) => {
   const { layers } = useLayerContext();
-  const { isBusy, error, exportLayers, pickFile, fileInputRef, onFileChosen } = game;
+  const { isBusy, error, exportLayers, pickFile, fileInputRef, onFileChosen, requestReset } = game;
 
   return (
     <div className="layer-modal__game">
@@ -59,6 +62,17 @@ export const GameFileActions: FC<Props> = ({ game }) => {
         >
           <Icon icon="import-add" />
           Добавить
+        </button>
+        <button
+          type="button"
+          className="layer-modal__game-button"
+          onClick={requestReset}
+          disabled={isBusy}
+          title="Удалить все локации и начать с пустой"
+          aria-label="Start a new game"
+        >
+          <Icon icon="new-game" />
+          Новый мир
         </button>
       </div>
       {error && (

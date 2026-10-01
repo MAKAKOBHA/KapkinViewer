@@ -8,6 +8,7 @@ import {
   Export,
   Import,
   ImportAdd,
+  NewGame,
   Opacity,
   Size,
   Trash,
@@ -25,6 +26,7 @@ const icons = {
   export: Export,
   import: Import,
   'import-add': ImportAdd,
+  'new-game': NewGame,
 } as const;
 
 export type IconName = keyof typeof icons;

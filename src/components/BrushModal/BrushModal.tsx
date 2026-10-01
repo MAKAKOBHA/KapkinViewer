@@ -3,6 +3,7 @@ import './BrushModal.scss';
 import { useDrawContext } from 'components/providers';
 import { Icon } from 'components/icons';
 import { DraggablePanel } from 'components/ui/DraggablePanel';
+import { useHotkeys } from 'hooks/hotkeys';
 
 export const BrushModal: React.FC = () => {
   const {
@@ -15,7 +16,10 @@ export const BrushModal: React.FC = () => {
     setBrushSize,
     brushOpacity,
     setBrushOpacity,
+    setIsBrushModalOpen,
   } = useDrawContext();
+
+  useHotkeys({ closeModal: () => setIsBrushModalOpen(false) });
 
   return (
     <DraggablePanel

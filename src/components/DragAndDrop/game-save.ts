@@ -171,6 +171,26 @@ export const importGame = async (
   return { layers, activeId: imported[0].id };
 };
 
+/** Имя единственной локации нового мира — такое же, как у самой первой. */
+const NEW_GAME_LAYER_NAME = 'Default';
+
+/**
+ * Новый мир: удаляет данные всех локаций и возвращает одну пустую взамен.
+ *
+ * Список локаций, как и при импорте, пишет не эта функция, а вызывающий — и по
+ * той же причине: на живой сцене автосохранение затрёт свежую запись.
+ */
+export const resetGame = async (
+  existing: GameLayer[],
+): Promise<{ layers: GameLayer[]; activeId: string }> => {
+  await Promise.all(existing.map((layer) => deleteLayerDataFromStorage(layer.id)));
+
+  // Свежий id, а не прежний: иначе новая локация подняла бы остатки удалённой.
+  const layer = { id: uuidv4(), name: NEW_GAME_LAYER_NAME };
+
+  return { layers: [layer], activeId: layer.id };
+};
+
 /** Имя файла: дата и название, чтобы сейвы различались в папке загрузок. */
 export const buildSaveFileName = (title: string, savedAt: Date = new Date()): string => {
   const date = savedAt.toISOString().slice(0, 10);

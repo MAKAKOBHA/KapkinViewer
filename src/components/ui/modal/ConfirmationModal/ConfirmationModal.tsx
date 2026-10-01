@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import './ConfirmationModal.scss';
 import { Button } from 'components/ui/Button';
 
@@ -21,6 +21,30 @@ export const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   onCancel,
   onConfirm,
 }) => {
+  // Обработчики читаются через ref: подписка не пересоздаётся на каждый рендер,
+  // но замыкания всегда свежие.
+  const handlersRef = useRef({ onCancel, onConfirm });
+  handlersRef.current = { onCancel, onConfirm };
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Enter' && event.key !== 'Escape') return;
+
+      // Подтверждение — верхнее окно, и клавиша дальше не идёт: иначе Esc
+      // заодно закрыл бы панель под ним, а хоткеи сцены сработали бы сквозь.
+      event.preventDefault();
+      event.stopPropagation();
+
+      if (event.key === 'Enter') handlersRef.current.onConfirm();
+      else handlersRef.current.onCancel();
+    };
+
+    // Погружение, а не всплытие: хоткеи слушают document, и перехватить
+    // событие до них можно только раньше по пути.
+    if (isOpen) document.addEventListener('keydown', handleKeyDown, true);
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

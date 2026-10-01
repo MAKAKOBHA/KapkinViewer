@@ -7,6 +7,7 @@ export type HotkeyId =
   | 'grid'
   | 'eidos'
   | 'brushModal'
+  | 'closeModal'
   | 'cursorHalo'
   | 'resetViewport'
   | 'addDice'
@@ -50,6 +51,8 @@ export const HOTKEYS: Record<HotkeyId, Hotkey> = {
   grid: { keys: ['m', 'ь'], description: 'Сетка' },
   eidos: { keys: ["'", 'э'], description: 'Эйдос' },
   brushModal: { keys: ['d', 'в'], description: 'Панель кисти' },
+  // Закрывает ту панель, из которой вызван: подписывается каждая открытая.
+  closeModal: { keys: ['escape'], description: 'Закрыть панель' },
   cursorHalo: { keys: ['o', 'щ'], description: 'Вид ореола курсора' },
   resetViewport: {
     keys: ['z', 'я'],

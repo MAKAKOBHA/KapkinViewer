@@ -7,6 +7,7 @@ import {
   GameLayer,
   importGame,
   ImportMode,
+  resetGame,
   SaveFileError,
 } from 'components/DragAndDrop';
 
@@ -21,6 +22,11 @@ export type UseGameFileData = {
   replaceCandidate: File | null;
   confirmReplace(): void;
   cancelReplace(): void;
+  /** Запрошен новый мир: ждёт подтверждения. */
+  isResetRequested: boolean;
+  requestReset(): void;
+  confirmReset(): void;
+  cancelReset(): void;
 };
 
 /**
@@ -35,6 +41,7 @@ export const useGameFile = (): UseGameFileData => {
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [replaceCandidate, setReplaceCandidate] = useState<File | null>(null);
+  const [isResetRequested, setIsResetRequested] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modeRef = useRef<ImportMode>('append');
 
@@ -63,6 +70,22 @@ export const useGameFile = (): UseGameFileData => {
       window.location.reload();
     } catch (cause) {
       setError(cause instanceof SaveFileError ? cause.message : 'Не удалось загрузить игру');
+      setIsBusy(false);
+    }
+  };
+
+  const runReset = async () => {
+    setIsBusy(true);
+    setError(null);
+
+    try {
+      const next = await resetGame(layers);
+      saveLayersToStorage(next.layers, next.activeId);
+      // Перезагрузка по той же причине, что и после импорта: сцена в памяти
+      // всё ещё от стёртой локации и успеет записать себя обратно.
+      window.location.reload();
+    } catch {
+      setError('Не удалось создать новый мир');
       setIsBusy(false);
     }
   };
@@ -107,5 +130,15 @@ export const useGameFile = (): UseGameFileData => {
     replaceCandidate,
     confirmReplace,
     cancelReplace: () => setReplaceCandidate(null),
+    isResetRequested,
+    requestReset: () => {
+      setError(null);
+      setIsResetRequested(true);
+    },
+    confirmReset: () => {
+      setIsResetRequested(false);
+      void runReset();
+    },
+    cancelReset: () => setIsResetRequested(false),
   };
 };
