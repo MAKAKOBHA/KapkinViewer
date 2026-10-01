@@ -9,12 +9,6 @@ export const LAYER_INPUT_KEYS: HelpRow[] = [
   { label: 'Esc', description: 'Отменить ввод имени' },
 ];
 
-/** Клавиши окна с подтверждением: оно перехватывает их до хоткеев. */
-export const CONFIRM_KEYS: HelpRow[] = [
-  { label: 'Enter', description: 'Подтвердить действие' },
-  { label: 'Esc', description: 'Отказаться от действия' },
-];
-
 export const MOUSE_ACTIONS: HelpRow[] = [
   { label: 'Левая кнопка', description: 'Перетащить токен' },
   { label: 'Правая кнопка', description: 'Удалить токен или кубик' },

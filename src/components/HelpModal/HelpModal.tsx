@@ -2,7 +2,7 @@ import { FC, PropsWithChildren, useState } from 'react';
 import { Hotkey, HOTKEYS, useHotkeys } from 'hooks/hotkeys';
 import { DraggablePanel } from 'components/ui/DraggablePanel';
 import { getHotkeyLabel } from './helpers';
-import { CONFIRM_KEYS, HelpRow, LAYER_INPUT_KEYS, MOUSE_ACTIONS, PAN_ACTIONS } from './constants';
+import { HelpRow, LAYER_INPUT_KEYS, MOUSE_ACTIONS, PAN_ACTIONS } from './constants';
 import './HelpModal.scss';
 
 // Список клавиш берётся прямо из карты: новый хоткей появится в справке сам.
@@ -64,7 +64,6 @@ export const HelpModal: FC = () => {
       <HelpSection title="Управление слоями" rows={LAYER_ROWS}>
         Пока курсор в поле ввода имени, из горячих клавиш срабатывают только PageDown и F1.
       </HelpSection>
-      <HelpSection title="Окна с подтверждением" rows={CONFIRM_KEYS} />
       <HelpSection title="Мышь" rows={MOUSE_ACTIONS} />
       <HelpSection title="Панорамирование" rows={PAN_ROWS} />
     </DraggablePanel>
