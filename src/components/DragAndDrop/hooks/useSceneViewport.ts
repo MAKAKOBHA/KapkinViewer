@@ -139,12 +139,11 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
       target instanceof Element && Boolean(target.closest('.draggable-panel'));
 
     const onWheel = (event: WheelEvent) => {
-      if (!event.shiftKey || isOnPanel(event.target)) return;
-      // Иначе Shift + колесо уйдёт в горизонтальный скролл страницы.
+      if (!event.ctrlKey || isOnPanel(event.target)) return;
       event.preventDefault();
 
-      // С зажатым Shift трекпад отдаёт дельту по горизонтали — берём ту ось,
-      // где её больше.
+      // С зажатым модификатором трекпад отдаёт дельту по горизонтали — берём
+      // ту ось, где её больше.
       const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX;
       if (!delta) return;
 
@@ -161,7 +160,7 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
     };
 
     const onMouseDown = (event: MouseEvent) => {
-      if (!event.shiftKey || event.button !== 0 || isOnPanel(event.target)) return;
+      if (!event.ctrlKey || event.button !== 0 || isOnPanel(event.target)) return;
       // Иначе браузер начнёт выделять текст и тащить картинку.
       event.preventDefault();
 
@@ -180,7 +179,7 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
         last = { x: move.clientX, y: move.clientY };
       };
 
-      // Shift мастер может отпустить раньше кнопки: жест заканчивает mouseup.
+      // Ctrl мастер может отпустить раньше кнопки: жест заканчивает mouseup.
       const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
@@ -210,6 +209,20 @@ export const useSceneViewport = (rootRef: RefObject<HTMLDivElement | null>): Sce
       window.removeEventListener('resize', onResize);
     };
   }, [apply, applyWorld, rootRef, save]);
+
+  // Ctrl + колесо — это ещё и браузерный зум страницы: он масштабирует вместе
+  // со сценой панели и курсор, а сбрасывается только руками. Глушим его на
+  // всём документе, а не только на сцене, — иначе жест над панелью локаций или
+  // над кубиками всё равно растягивал бы страницу. Пинч на трекпаде приходит
+  // тем же событием, поэтому попадает под то же правило.
+  useEffect(() => {
+    const blockBrowserZoom = (event: WheelEvent) => {
+      if (event.ctrlKey) event.preventDefault();
+    };
+
+    document.addEventListener('wheel', blockBrowserZoom, { passive: false });
+    return () => document.removeEventListener('wheel', blockBrowserZoom);
+  }, []);
 
   useEffect(() => () => window.clearTimeout(saveTimeoutRef.current), []);
 

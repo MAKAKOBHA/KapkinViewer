@@ -59,8 +59,8 @@ export const useMouseEvents: UseMouseEvents = ({
 
   const onMouseDown = useCallback(
     (e: React.MouseEvent<HTMLDivElement>, id: string) => {
-      // Shift + ЛКМ возит сцену целиком — токен в этом жесте не участвует.
-      if (e.shiftKey) return;
+      // Ctrl + ЛКМ возит сцену целиком — токен в этом жесте не участвует.
+      if (e.ctrlKey) return;
 
       e.stopPropagation();
       e.preventDefault();
@@ -89,9 +89,9 @@ export const useMouseEvents: UseMouseEvents = ({
 
   const handleZoom = useCallback(
     (e: WheelEvent, id: string) => {
-      // С Shift колесо масштабирует сцену: не глотаем событие, пусть всплывёт
+      // С Ctrl колесо масштабирует сцену: не глотаем событие, пусть всплывёт
       // к корню, где его ждёт useSceneViewport.
-      if (e.shiftKey) return;
+      if (e.ctrlKey) return;
 
       e.preventDefault();
       e.stopPropagation();

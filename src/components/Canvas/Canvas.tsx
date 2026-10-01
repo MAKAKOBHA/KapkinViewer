@@ -71,8 +71,8 @@ export const Canvas: FC<Props> = ({ scene }) => {
 
   const startDrawing = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      // Shift + ЛКМ возит сцену — даже когда кисть в руках.
-      if (!isCanvasEnabled || event.shiftKey || !activeTool) return;
+      // Ctrl + ЛКМ возит сцену — даже когда кисть в руках.
+      if (!isCanvasEnabled || event.ctrlKey || !activeTool) return;
       event.preventDefault();
 
       isDrawingRef.current = true;

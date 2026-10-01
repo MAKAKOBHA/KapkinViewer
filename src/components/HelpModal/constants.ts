@@ -19,6 +19,6 @@ export const MOUSE_ACTIONS: HelpRow[] = [
 
 /** Мышь, которая двигает карту, — в своём блоке рядом с клавишей сброса. */
 export const PAN_ACTIONS: HelpRow[] = [
-  { label: 'Shift + колесо', description: 'Масштаб сцены в точку курсора' },
-  { label: 'Shift + левая кнопка', description: 'Перемещать сцену' },
+  { label: 'Ctrl + колесо', description: 'Масштаб сцены в точку курсора' },
+  { label: 'Ctrl + левая кнопка', description: 'Перемещать сцену' },
 ];
